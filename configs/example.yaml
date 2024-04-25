@@ -1,0 +1,3 @@
+forwarder_config:
+  tg_config:
+    token: "123123"
