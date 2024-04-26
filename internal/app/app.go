@@ -6,7 +6,8 @@ import (
 	"log/slog"
 	"sync"
 	"viktig/internal/config"
-	"viktig/internal/core"
+	"viktig/internal/entities"
+	"viktig/internal/queue"
 	"viktig/internal/services/forwarder"
 
 	"github.com/xlab/closer"
@@ -29,18 +30,20 @@ func (a App) Run() error {
 	appCtx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	errorCh := make(chan error)
-	messageCh := make(chan core.Message)
 
-	forwarderService := forwarder.New(cfg.ForwarderConfig)
+	q := queue.NewQueue[entities.Message]()
+	go func() {
+		// TODO: remove these test messages, implement a service to receive messages from VK
+		q.Put(entities.Message{Text: "Hi all", VkSenderId: 1})
+		q.Put(entities.Message{Text: "Good evening, gentlemen", VkSenderId: 1})
+	}()
+
+	forwarderService := forwarder.New(cfg.ForwarderConfig, q)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		errorCh <- forwarderService.Run(appCtx, messageCh)
+		errorCh <- forwarderService.Run(appCtx)
 	}()
-
-	// TODO: remove these test messages, implement a service to receive messages from VK
-	messageCh <- core.Message{Text: "Hi all", VkSenderId: 1}
-	messageCh <- core.Message{Text: "Good evening, gentlemen", VkSenderId: 1}
 
 	// all other services go here
 	// all services must shut down on <-appCtx.Done() and return an error
