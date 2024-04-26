@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"viktig/internal/core"
 
-	"github.com/pkg/errors"
 	tele "gopkg.in/telebot.v3"
 )
 
@@ -39,8 +38,8 @@ func (f *Forwarder) Run(ctx context.Context, messages chan core.Message) error {
 				slog.Info("sent message", "id", sentMessage.ID)
 			}
 		case <-ctx.Done():
-			slog.Info("stopping...")
-			return errors.New("error 1")
+			slog.Info("stopping forwarder service...")
+			return nil
 		}
 	}
 }
