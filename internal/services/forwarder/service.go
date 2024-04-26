@@ -3,6 +3,7 @@ package forwarder
 import (
 	"context"
 	"fmt"
+	"html"
 	"log/slog"
 	"viktig/internal/core"
 
@@ -31,7 +32,12 @@ func (f *Forwarder) Run(ctx context.Context, messages chan core.Message) error {
 	for {
 		select {
 		case message := <-messages:
-			sentMessage, err := bot.Send(tele.ChatID(f.tgChatId), render(message))
+			sentMessage, err := bot.Send(
+				tele.ChatID(f.tgChatId),
+				render(message),
+				tele.ModeHTML,
+				tele.NoPreview,
+			)
 			if err != nil {
 				slog.Error(err.Error())
 			} else {
@@ -45,5 +51,10 @@ func (f *Forwarder) Run(ctx context.Context, messages chan core.Message) error {
 }
 
 func render(message core.Message) string {
-	return fmt.Sprintf("👤 %v\n💬 %s", message.VkSenderId, message.Text)
+	return fmt.Sprintf(
+		"👤 <a href=\"https://vk.com/id%d\">%d</a>\n💬 %s",
+		message.VkSenderId,
+		message.VkSenderId,
+		html.EscapeString(message.Text),
+	)
 }
