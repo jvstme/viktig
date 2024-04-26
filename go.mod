@@ -6,6 +6,7 @@ require (
 	github.com/go-playground/validator/v10 v10.19.0
 	github.com/pkg/errors v0.9.1
 	github.com/xlab/closer v1.1.0
+	gopkg.in/telebot.v3 v3.2.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 

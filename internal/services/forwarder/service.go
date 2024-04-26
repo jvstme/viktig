@@ -3,33 +3,48 @@ package forwarder
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"log/slog"
-	"time"
+	"viktig/internal/core"
+
+	"github.com/pkg/errors"
+	tele "gopkg.in/telebot.v3"
 )
 
 type Forwarder struct {
-	tgToken string
+	tgToken  string
+	tgChatId int
 }
 
 func New(cfg *Config) *Forwarder {
 	return &Forwarder{
-		tgToken: cfg.TgConfig.Token,
+		tgToken:  cfg.TgConfig.Token,
+		tgChatId: cfg.TgConfig.ChatId,
 	}
 }
 
-func (f *Forwarder) Run(ctx context.Context) error {
-	// пока тут просто что-то крутится
-	t := time.NewTicker(time.Second)
-	i := 0
+func (f *Forwarder) Run(ctx context.Context, messages chan core.Message) error {
+	botSettings := tele.Settings{Token: f.tgToken}
+	bot, err := tele.NewBot(botSettings)
+	if err != nil {
+		return err
+	}
+
 	for {
 		select {
-		case <-t.C:
-			i += 1
-			slog.Info(fmt.Sprintf("%v", i))
+		case message := <-messages:
+			sentMessage, err := bot.Send(tele.ChatID(f.tgChatId), render(message))
+			if err != nil {
+				slog.Error(err.Error())
+			} else {
+				slog.Info("sent message", "id", sentMessage.ID)
+			}
 		case <-ctx.Done():
 			slog.Info("stopping...")
 			return errors.New("error 1")
 		}
 	}
+}
+
+func render(message core.Message) string {
+	return fmt.Sprintf("👤 %v\n💬 %s", message.VkSenderId, message.Text)
 }

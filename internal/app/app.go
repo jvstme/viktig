@@ -6,9 +6,11 @@ import (
 	"log/slog"
 	"sync"
 	"viktig/internal/config"
+	"viktig/internal/core"
 	"viktig/internal/services/forwarder"
+
+	"github.com/xlab/closer"
 )
-import "github.com/xlab/closer"
 
 type App struct {
 }
@@ -27,13 +29,18 @@ func (a App) Run() error {
 	appCtx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	errorCh := make(chan error)
+	messageCh := make(chan core.Message)
 
 	forwarderService := forwarder.New(cfg.ForwarderConfig)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		errorCh <- forwarderService.Run(appCtx)
+		errorCh <- forwarderService.Run(appCtx, messageCh)
 	}()
+
+	// TODO: remove these test messages, implement a service to receive messages from VK
+	messageCh <- core.Message{Text: "Hi all", VkSenderId: 1}
+	messageCh <- core.Message{Text: "Good evening, gentlemen", VkSenderId: 1}
 
 	// all other services go here
 	// all services must shut down on <-appCtx.Done() and return an error
