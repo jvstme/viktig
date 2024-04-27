@@ -28,9 +28,8 @@ func (a App) Run() error {
 		return err
 	}
 
-	appCtx, cancel := context.WithCancel(context.Background())
-	wg := sync.WaitGroup{}
 	errorCh := make(chan error)
+	appCtx, wg := setupContextAndWg(context.Background(), errorCh)
 
 	q := queue.NewQueue[entities.Message]()
 
@@ -48,7 +47,7 @@ func (a App) Run() error {
 		errorCh <- httpServer.Run(appCtx)
 	}()
 
-	// all other services go here
+	// all services go here
 	// all services must shut down on <-appCtx.Done() and return an error
 
 	// Предлагаю 3 сервиса:
@@ -58,18 +57,29 @@ func (a App) Run() error {
 	// todo [ ] Сервис 3: UI бота/настройки
 	// todo [ ] К ним репо для БД. В бд храним инфу о пользователе и иже с ней
 
-	closer.Bind(gatherErrors(errorCh))
-	closer.Bind(func() { close(errorCh) })
-	closer.Bind(wg.Wait)
-	closer.Bind(cancel)
 	closer.Hold()
-
 	return nil
 }
 
-func gatherErrors(errorCh <-chan error) func() {
-	resCh := make(chan error)
+// setupContextAndWg returns a context cancelled on app shutdown request and a wait group awaited on shutdown.
+//
+//	All non-nil errors received from errorCh after an app shutdown request will be logged as "App shutdown errors".
+//	If an error is received from errorCh before an app shutdown request, closer.Close will be called.
+func setupContextAndWg(parentCtx context.Context, errorCh chan error) (ctx context.Context, wg *sync.WaitGroup) {
+	wg = &sync.WaitGroup{}
+	ctx, cancel := context.WithCancel(parentCtx)
+
 	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		case err := <-errorCh:
+			slog.Error(fmt.Sprintf("Stopping due to error:\n%+v", err))
+			closer.Close()
+		}
+	}()
+
+	closer.Bind(func() {
 		var res error
 		for err := range errorCh {
 			if err == nil {
@@ -80,10 +90,18 @@ func gatherErrors(errorCh <-chan error) func() {
 			}
 			res = fmt.Errorf("%s\n%+v", res, err)
 		}
-		resCh <- res
-	}()
 
-	return func() {
-		slog.Error(fmt.Sprintf("app shutdown errors:\n%v", <-resCh))
-	}
+		if res != nil {
+			slog.Error(fmt.Sprintf("App shutdown errors:\n%+v", res))
+		}
+	})
+	closer.Bind(func() {
+		go func() {
+			wg.Wait()
+			close(errorCh)
+		}()
+	})
+	closer.Bind(cancel)
+
+	return
 }
