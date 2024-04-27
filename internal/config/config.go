@@ -5,10 +5,12 @@ import (
 	"gopkg.in/yaml.v3"
 	"os"
 	"viktig/internal/services/forwarder"
+	"viktig/internal/services/http_server"
 )
 
 type Config struct {
-	ForwarderConfig *forwarder.Config `yaml:"forwarder_config" validate:"required"`
+	ForwarderConfig  *forwarder.Config   `yaml:"forwarder_config" validate:"required"`
+	HttpServerConfig *http_server.Config `yaml:"http_config" validate:"required"`
 }
 
 func LoadConfigFromFile(path string) (cfg *Config, err error) {

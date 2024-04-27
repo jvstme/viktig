@@ -9,6 +9,7 @@ import (
 	"viktig/internal/entities"
 	"viktig/internal/queue"
 	"viktig/internal/services/forwarder"
+	"viktig/internal/services/http_server"
 
 	"github.com/xlab/closer"
 )
@@ -32,11 +33,6 @@ func (a App) Run() error {
 	errorCh := make(chan error)
 
 	q := queue.NewQueue[entities.Message]()
-	go func() {
-		// TODO: remove these test messages, implement a service to receive messages from VK
-		q.Put(entities.Message{Text: "Hi all", VkSenderId: 1})
-		q.Put(entities.Message{Text: "Good evening, gentlemen", VkSenderId: 1})
-	}()
 
 	forwarderService := forwarder.New(cfg.ForwarderConfig, q)
 	wg.Add(1)
@@ -45,14 +41,22 @@ func (a App) Run() error {
 		errorCh <- forwarderService.Run(appCtx)
 	}()
 
+	httpServer := http_server.New(cfg.HttpServerConfig, q)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		errorCh <- httpServer.Run(appCtx)
+	}()
+
 	// all other services go here
 	// all services must shut down on <-appCtx.Done() and return an error
 
 	// Предлагаю 3 сервиса:
-	// Сервис 1: веб-сервер на который хукается вк. Он кладет сообщение во внешнюю очередь
-	// Сервис 2: шлет сообщения из очереди в нужные каналы. Можно добавить ретраи
-	// Сервис 3: UI бота/настройки
-	// К ним репо для очереди и репо для БД. В бд храним инфу о пользователе и иже с ней
+	// 		[x] Сервис 1: веб-сервер на который хукается вк. Он кладет сообщение во внешнюю очередь
+	// 		[x] Сервис 2: шлет сообщения из очереди в нужные каналы. Можно добавить ретраи
+	// 		[x] Очередь
+	// todo [ ] Сервис 3: UI бота/настройки
+	// todo [ ] К ним репо для БД. В бд храним инфу о пользователе и иже с ней
 
 	closer.Bind(gatherErrors(errorCh))
 	closer.Bind(func() { close(errorCh) })
