@@ -5,3 +5,8 @@ forwarder_config:
     # To forward messages to yourself, find your ID with https://t.me/userinfobot.
     # Don't forget to /start a conversation with the bot you created.
     chat_id: 123456789
+
+http_config:
+  address: 127.0.0.1
+  port: 1337
+  confirmationString: "12345"
