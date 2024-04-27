@@ -3,10 +3,11 @@ package http_server
 import (
 	"errors"
 	"fmt"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/valyala/fasthttp"
 	"log/slog"
 	"viktig/internal/entities"
+
+	jsoniter "github.com/json-iterator/go"
+	"github.com/valyala/fasthttp"
 )
 
 const (
@@ -25,7 +26,7 @@ func (s *HttpServer) vkHandler(ctx *fasthttp.RequestCtx) {
 		}
 	}()
 
-	var dto *typeDto
+	dto := &typeDto{}
 	if err = jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
 		return
 	}
@@ -43,11 +44,6 @@ func (s *HttpServer) vkHandler(ctx *fasthttp.RequestCtx) {
 }
 
 func (s *HttpServer) handleChallenge(ctx *fasthttp.RequestCtx) error {
-	var dto *challengeDto
-	if err := jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
-		return err
-	}
-
 	hookId, ok := ctx.UserValue(hookIdKey).(string)
 	if !ok || hookId == "" {
 		return errors.New("invalid hookId")
@@ -63,7 +59,7 @@ func (s *HttpServer) handleChallenge(ctx *fasthttp.RequestCtx) error {
 }
 
 func (s *HttpServer) handleNewMessage(ctx *fasthttp.RequestCtx) error {
-	var dto *newMessageDto
+	dto := &newMessageDto{}
 	if err := jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
 		return err
 	}
@@ -76,8 +72,8 @@ func (s *HttpServer) handleNewMessage(ctx *fasthttp.RequestCtx) error {
 	// todo: enqueue message with hook
 
 	s.q.Put(entities.Message{
-		Text:       dto.Object.Text,
-		VkSenderId: dto.Object.SenderId,
+		Text:       dto.Object.Message.Text,
+		VkSenderId: dto.Object.Message.SenderId,
 	})
 
 	ctx.Response.SetStatusCode(fasthttp.StatusOK)
