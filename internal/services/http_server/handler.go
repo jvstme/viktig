@@ -11,11 +11,16 @@ import (
 )
 
 const (
-	messageTypeChallenge  = "confirmation"
-	messageTypeNewMessage = "message_new"
+	messageTypeChallenge = "confirmation"
 
 	responseBodyOk = "ok"
 )
+
+var forwardedMessageTypes = map[string]entities.MessageType{
+	"message_new":   entities.MessageTypeNew,
+	"message_edit":  entities.MessageTypeEdit,
+	"message_reply": entities.MessageTypeReply,
+}
 
 func (s *HttpServer) vkHandler(ctx *fasthttp.RequestCtx) {
 	var err error
@@ -31,12 +36,11 @@ func (s *HttpServer) vkHandler(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	switch dto.Type {
-	case messageTypeChallenge:
+	if dto.Type == messageTypeChallenge {
 		err = s.handleChallenge(ctx)
-	case messageTypeNewMessage:
-		err = s.handleNewMessage(ctx)
-	default:
+	} else if messageType, ok := forwardedMessageTypes[dto.Type]; ok {
+		err = s.handleMessage(ctx, messageType)
+	} else {
 		text := fmt.Sprintf("unsupported message type: %s", dto.Type)
 		slog.Warn(text, "messageType", dto.Type)
 		ctx.Error(text, fasthttp.StatusBadRequest)
@@ -58,11 +62,7 @@ func (s *HttpServer) handleChallenge(ctx *fasthttp.RequestCtx) error {
 	return nil
 }
 
-func (s *HttpServer) handleNewMessage(ctx *fasthttp.RequestCtx) error {
-	dto := &newMessageDto{}
-	if err := jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
-		return err
-	}
+func (s *HttpServer) handleMessage(ctx *fasthttp.RequestCtx, messageType entities.MessageType) error {
 
 	hookId, ok := ctx.UserValue(hookIdKey).(string)
 	if !ok || hookId == "" {
@@ -71,9 +71,26 @@ func (s *HttpServer) handleNewMessage(ctx *fasthttp.RequestCtx) error {
 
 	// todo: enqueue message with hook
 
+	var message *vkMessage
+
+	if messageType == entities.MessageTypeNew {
+		dto := &newMessageDto{}
+		if err := jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
+			return err
+		}
+		message = &dto.Object.Message
+	} else {
+		dto := &editOrReplyMessageDto{}
+		if err := jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
+			return err
+		}
+		message = &dto.Object
+	}
+
 	s.q.Put(entities.Message{
-		Text:       dto.Object.Message.Text,
-		VkSenderId: dto.Object.Message.SenderId,
+		Type:       messageType,
+		Text:       message.Text,
+		VkSenderId: message.SenderId,
 	})
 
 	ctx.Response.SetStatusCode(fasthttp.StatusOK)
