@@ -6,9 +6,15 @@ type typeDto struct {
 
 type newMessageDto struct {
 	Object struct {
-		Message struct {
-			SenderId int    `json:"from_id"`
-			Text     string `json:"text"`
-		} `json:"message"`
+		Message vkMessage `json:"message"`
 	} `json:"object"`
+}
+
+type editOrReplyMessageDto struct {
+	Object vkMessage `json:"object"`
+}
+
+type vkMessage struct {
+	SenderId int    `json:"from_id"`
+	Text     string `json:"text"`
 }

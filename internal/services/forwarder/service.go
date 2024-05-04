@@ -11,6 +11,12 @@ import (
 	tele "gopkg.in/telebot.v3"
 )
 
+var messageTypeIcons = map[entities.MessageType]string{
+	entities.MessageTypeNew:   "💬",
+	entities.MessageTypeEdit:  "✏️",
+	entities.MessageTypeReply: "↩️",
+}
+
 type Forwarder struct {
 	tgToken  string
 	tgChatId int
@@ -54,10 +60,19 @@ func (f *Forwarder) Run(ctx context.Context) error {
 }
 
 func render(message entities.Message) string {
+	entitySlug := "id"
+	entityId := message.VkSenderId
+	if message.VkSenderId < 0 {
+		entitySlug = "club"
+		entityId = -message.VkSenderId
+	}
+
 	return fmt.Sprintf(
-		"👤 <a href=\"https://vk.com/id%d\">%d</a>\n💬 %s",
-		message.VkSenderId,
-		message.VkSenderId,
+		"👤 <a href=\"https://vk.com/%s%d\">%d</a>\n%s %s",
+		entitySlug,
+		entityId,
+		entityId,
+		messageTypeIcons[message.Type],
 		html.EscapeString(message.Text),
 	)
 }
