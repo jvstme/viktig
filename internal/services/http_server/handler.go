@@ -36,6 +36,14 @@ func (s *HttpServer) vkHandler(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	slog.Info(
+		"received vk event",
+		"type", dto.Type,
+		"id", dto.EventId,
+		"groupId", dto.GroupId,
+		"apiVersion", dto.ApiVersion,
+	)
+
 	if dto.Type == messageTypeChallenge {
 		err = s.handleChallenge(ctx)
 	} else if messageType, ok := forwardedMessageTypes[dto.Type]; ok {

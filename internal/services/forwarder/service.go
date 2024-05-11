@@ -38,6 +38,8 @@ func (f *Forwarder) Run(ctx context.Context) error {
 		return err
 	}
 
+	slog.Info("forwarder is ready", "username", bot.Me.Username)
+
 	for {
 		select {
 		case message := <-f.q.AsChan():
@@ -50,10 +52,14 @@ func (f *Forwarder) Run(ctx context.Context) error {
 			if err != nil {
 				slog.Error(err.Error())
 			} else {
-				slog.Info("sent message", "id", sentMessage.ID)
+				slog.Info(
+					"sent telegram message",
+					"id", sentMessage.ID,
+					"chatId", sentMessage.Chat.ID,
+				)
 			}
 		case <-ctx.Done():
-			slog.Info("stopping forwarder service...")
+			slog.Info("stopping forwarder service")
 			return nil
 		}
 	}

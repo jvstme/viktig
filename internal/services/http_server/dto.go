@@ -1,7 +1,10 @@
 package http_server
 
 type typeDto struct {
-	Type string `json:"type"`
+	Type       string `json:"type"`
+	EventId    string `json:"event_id"`
+	ApiVersion string `json:"v"`
+	GroupId    int    `json:"group_id"`
 }
 
 type newMessageDto struct {

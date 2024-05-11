@@ -3,11 +3,13 @@ package http_server
 import (
 	"context"
 	"fmt"
-	"github.com/fasthttp/router"
-	"github.com/valyala/fasthttp"
+	"log/slog"
 	"net"
 	"viktig/internal/entities"
 	"viktig/internal/queue"
+
+	"github.com/fasthttp/router"
+	"github.com/valyala/fasthttp"
 )
 
 const hookIdKey = "community_hook_id"
@@ -33,14 +35,17 @@ func (s *HttpServer) Run(ctx context.Context) error {
 	api := r.Group("/api")
 	api.POST(fmt.Sprintf("/vk/callback/{%s}", hookIdKey), s.vkHandler)
 
-	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.Address, s.Port))
+	socketAddress := fmt.Sprintf("%s:%d", s.Address, s.Port)
+	l, err := net.Listen("tcp", socketAddress)
 	if err != nil {
 		return err
 	}
 	go func() {
 		<-ctx.Done()
+		slog.Info("stopping http server")
 		_ = l.Close()
 	}()
 
+	slog.Info("starting http server", "address", socketAddress)
 	return fasthttp.Serve(l, r.Handler)
 }
