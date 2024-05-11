@@ -74,7 +74,7 @@ func setupContextAndWg(parentCtx context.Context, errorCh chan error) (ctx conte
 		case <-ctx.Done():
 			return
 		case err := <-errorCh:
-			slog.Error(fmt.Sprintf("Stopping due to error:\n%+v", err))
+			slog.Error(fmt.Sprintf("stopping due to error: %+v", err))
 			closer.Close()
 		}
 	}()
