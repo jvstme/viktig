@@ -1,0 +1,6 @@
+services:
+  prometheus:
+    image: bitnami/prometheus
+    volumes:
+      - "./prometheus/prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml:z"
+    network_mode: host

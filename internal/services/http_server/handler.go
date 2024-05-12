@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"viktig/internal/entities"
+	"viktig/internal/metrics"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/valyala/fasthttp"
 )
 
@@ -43,6 +45,7 @@ func (s *HttpServer) vkHandler(ctx *fasthttp.RequestCtx) {
 		"groupId", dto.GroupId,
 		"apiVersion", dto.ApiVersion,
 	)
+	metrics.VKEventsReceived.With((prometheus.Labels{"type": dto.Type})).Inc()
 
 	if dto.Type == messageTypeChallenge {
 		err = s.handleChallenge(ctx)
