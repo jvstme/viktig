@@ -9,4 +9,5 @@ forwarder_config:
 http_config:
   address: 127.0.0.1
   port: 1337
-  confirmationString: "12345"
+  confirmation_string: abcdef
+  metrics_auth_token: my-secret-metrics-token

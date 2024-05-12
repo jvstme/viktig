@@ -6,6 +6,7 @@ import (
 	"html"
 	"log/slog"
 	"viktig/internal/entities"
+	"viktig/internal/metrics"
 	"viktig/internal/queue"
 
 	tele "gopkg.in/telebot.v3"
@@ -57,6 +58,7 @@ func (f *Forwarder) Run(ctx context.Context) error {
 					"id", sentMessage.ID,
 					"chatId", sentMessage.Chat.ID,
 				)
+				metrics.MessagesForwarded.Inc()
 			}
 		case <-ctx.Done():
 			slog.Info("stopping forwarder service")
