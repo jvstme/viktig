@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"html"
 	"log/slog"
+
 	"viktig/internal/entities"
 	"viktig/internal/metrics"
 	"viktig/internal/queue"
+	"viktig/internal/repository"
 
 	tele "gopkg.in/telebot.v3"
 )
@@ -18,51 +20,62 @@ var messageTypeIcons = map[entities.MessageType]string{
 	entities.MessageTypeReply: "↩️",
 }
 
-type Forwarder struct {
-	tgToken  string
-	tgChatId int
-	q        *queue.Queue[entities.Message]
+type Service struct {
+	tgBotToken string
+	q          *queue.Queue[entities.Message]
+	repo       repository.Repository
+	l          *slog.Logger
 }
 
-func New(cfg *Config, queue *queue.Queue[entities.Message]) *Forwarder {
-	return &Forwarder{
-		tgToken:  cfg.TgConfig.Token,
-		tgChatId: cfg.TgConfig.ChatId,
-		q:        queue,
+func New(cfg *Config, queue *queue.Queue[entities.Message], repo repository.Repository, l *slog.Logger) *Service {
+	return &Service{
+		tgBotToken: cfg.BotToken,
+		q:          queue,
+		repo:       repo,
+		l:          l.With("name", "ForwarderService"),
 	}
 }
 
-func (f *Forwarder) Run(ctx context.Context) error {
-	botSettings := tele.Settings{Token: f.tgToken}
+func (s *Service) Run(ctx context.Context) error {
+	botSettings := tele.Settings{Token: s.tgBotToken}
 	bot, err := tele.NewBot(botSettings)
 	if err != nil {
 		return err
 	}
 
-	slog.Info("forwarder is ready", "username", bot.Me.Username)
+	s.l.Info("forwarder is ready", "username", bot.Me.Username)
 
 	for {
 		select {
-		case message := <-f.q.AsChan():
+		case <-ctx.Done():
+			s.l.Info("stopping forwarder service")
+			return nil
+		case message := <-s.q.AsChan():
+			l := s.l.With("interactionId", message.InteractionId, "fromVkSenderId", message.VkSenderId)
+			interaction, err := s.repo.GetInteraction(message.InteractionId)
+			if err != nil {
+				l.Error(fmt.Errorf("get interaction failed: %w", err).Error())
+				continue
+			}
+			if interaction == nil {
+				l.Error("interaction not found", "interactionId", message.InteractionId)
+				continue
+			}
+
+			l = l.With("toTgChatId", interaction.TgChatId)
 			sentMessage, err := bot.Send(
-				tele.ChatID(f.tgChatId),
+				tele.ChatID(interaction.TgChatId),
 				render(message),
 				tele.ModeHTML,
 				tele.NoPreview,
 			)
 			if err != nil {
-				slog.Error(err.Error())
-			} else {
-				slog.Info(
-					"sent telegram message",
-					"id", sentMessage.ID,
-					"chatId", sentMessage.Chat.ID,
-				)
-				metrics.MessagesForwarded.Inc()
+				l.Error(fmt.Errorf("error sending tg message: %w", err).Error())
+				continue
 			}
-		case <-ctx.Done():
-			slog.Info("stopping forwarder service")
-			return nil
+
+			l.Info("sent telegram message", "sentMessageId", sentMessage.ID)
+			metrics.MessagesForwarded.Inc()
 		}
 	}
 }

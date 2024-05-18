@@ -1,4 +1,4 @@
-package http_server
+package vk_callback_handler
 
 type typeDto struct {
 	Type       string `json:"type"`

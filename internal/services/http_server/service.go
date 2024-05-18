@@ -5,46 +5,36 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"viktig/internal/entities"
-	"viktig/internal/queue"
+
+	"viktig/internal/services/http_server/handlers"
+	"viktig/internal/services/http_server/handlers/vk_callback_handler"
 
 	"github.com/fasthttp/router"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/valyala/fasthttp"
-	"github.com/valyala/fasthttp/fasthttpadaptor"
 )
 
-const hookIdKey = "community_hook_id"
-
 type HttpServer struct {
-	Address            string
-	Port               int
-	MetricsAuthToken   string
-	ConfirmationString string
-	q                  *queue.Queue[entities.Message]
+	Address string
+	Port    int
+
+	handlers *handlers.Handlers
+	l        *slog.Logger
 }
 
-func New(cfg *Config, q *queue.Queue[entities.Message]) *HttpServer {
+func New(cfg *Config, handlers *handlers.Handlers, l *slog.Logger) *HttpServer {
 	return &HttpServer{
-		Address:            cfg.Address,
-		Port:               cfg.Port,
-		MetricsAuthToken:   cfg.MetricsAuthToken,
-		ConfirmationString: cfg.ConfirmationString,
-		q:                  q,
+		Address:  cfg.Address,
+		Port:     cfg.Port,
+		handlers: handlers,
+		l:        l.With("name", "HttpServer"),
 	}
 }
 
 func (s *HttpServer) Run(ctx context.Context) error {
 	r := router.New()
-	r.GET(
-		"/metrics",
-		bearerTokenAuth(
-			s.MetricsAuthToken,
-			fasthttpadaptor.NewFastHTTPHandler(promhttp.Handler()),
-		),
-	)
+	r.GET("/metrics", s.handlers.Metrics.Handle)
 	api := r.Group("/api")
-	api.POST(fmt.Sprintf("/vk/callback/{%s}", hookIdKey), s.vkHandler)
+	api.POST(fmt.Sprintf("/vk/callback/{%s}", vk_callback_handler.HookIdKey), s.handlers.VkCallbackHandler.Handle)
 
 	socketAddress := fmt.Sprintf("%s:%d", s.Address, s.Port)
 	l, err := net.Listen("tcp", socketAddress)
@@ -53,10 +43,10 @@ func (s *HttpServer) Run(ctx context.Context) error {
 	}
 	go func() {
 		<-ctx.Done()
-		slog.Info("stopping http server")
+		s.l.Info("stopping http server")
 		_ = l.Close()
 	}()
 
-	slog.Info("starting http server", "address", socketAddress)
+	s.l.Info("starting http server", "address", socketAddress)
 	return fasthttp.Serve(l, r.Handler)
 }

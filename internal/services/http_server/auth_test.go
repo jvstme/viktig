@@ -31,7 +31,7 @@ func makeTestClient(handler fasthttp.RequestHandler) http.Client {
 
 func TestBearerTokenAuth(t *testing.T) {
 	t.Run("unauthorized", func(t *testing.T) {
-		client := makeTestClient(bearerTokenAuth("test-token", alwaysOkHandler))
+		client := makeTestClient(BearerTokenAuth("test-token", alwaysOkHandler))
 		resp, _ := client.Get("http://localhost/")
 		body, _ := io.ReadAll(resp.Body)
 		assert.Equal(t, fasthttp.StatusUnauthorized, resp.StatusCode)
@@ -39,7 +39,7 @@ func TestBearerTokenAuth(t *testing.T) {
 	})
 
 	t.Run("authorized", func(t *testing.T) {
-		client := makeTestClient(bearerTokenAuth("test-token", alwaysOkHandler))
+		client := makeTestClient(BearerTokenAuth("test-token", alwaysOkHandler))
 		req, _ := http.NewRequest("GET", "http://localhost/", nil)
 		req.Header.Set("Authorization", "Bearer test-token")
 		resp, _ := client.Do(req)
