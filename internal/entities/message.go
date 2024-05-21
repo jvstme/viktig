@@ -1,7 +1,7 @@
 package entities
 
 type Message struct {
-	InteractionId string // same as hookId from vk
+	InteractionId string
 	Type          MessageType
 	Text          string
 	VkSenderId    int

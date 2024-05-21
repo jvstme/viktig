@@ -21,7 +21,7 @@ const (
 
 	responseBodyOk = "ok"
 
-	HookIdKey = "community_hook_id"
+	InteractionIdKey = "interactionId"
 )
 
 var ForwardedMessageTypes = map[string]entities.MessageType{
@@ -80,13 +80,13 @@ func (h *vkCallbackHandler) Handle(ctx *fasthttp.RequestCtx) {
 }
 
 func (h *vkCallbackHandler) handleChallenge(ctx *fasthttp.RequestCtx) error {
-	hookId, ok := ctx.UserValue(HookIdKey).(string)
-	if !ok || hookId == "" {
+	interactionId, ok := ctx.UserValue(InteractionIdKey).(string)
+	if !ok || interactionId == "" {
 		// should be impossible but still check
-		return errors.New("invalid hookId")
+		return errors.New("invalid interactionId")
 	}
 
-	interaction, err := h.repo.GetInteraction(hookId)
+	interaction, err := h.repo.GetInteraction(interactionId)
 	if err != nil {
 		return err
 	}
@@ -101,10 +101,10 @@ func (h *vkCallbackHandler) handleChallenge(ctx *fasthttp.RequestCtx) error {
 }
 
 func (h *vkCallbackHandler) handleMessage(ctx *fasthttp.RequestCtx, messageType entities.MessageType) error {
-	hookId, ok := ctx.UserValue(HookIdKey).(string)
-	if !ok || hookId == "" {
+	interactionId, ok := ctx.UserValue(InteractionIdKey).(string)
+	if !ok || interactionId == "" {
 		// should be impossible but still check
-		return errors.New("invalid hookId")
+		return errors.New("invalid interactionId")
 	}
 
 	var message *vkMessage
@@ -122,13 +122,13 @@ func (h *vkCallbackHandler) handleMessage(ctx *fasthttp.RequestCtx, messageType 
 		message = &dto.Object
 	}
 
-	if !h.repo.ExistsInteraction(hookId) {
+	if !h.repo.ExistsInteraction(interactionId) {
 		return fmt.Errorf("interaction does not exist")
 	}
 
 	//todo: put blocks. add timeout
 	h.q.Put(entities.Message{
-		InteractionId: hookId,
+		InteractionId: interactionId,
 		Type:          messageType,
 		Text:          message.Text,
 		VkSenderId:    message.SenderId,

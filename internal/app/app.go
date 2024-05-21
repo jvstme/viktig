@@ -12,6 +12,7 @@ import (
 	"viktig/internal/services/forwarder"
 	"viktig/internal/services/http_server"
 	"viktig/internal/services/http_server/handlers"
+	"viktig/internal/services/http_server/handlers/debug_handler"
 	"viktig/internal/services/http_server/handlers/metrics_handler"
 	"viktig/internal/services/http_server/handlers/vk_callback_handler"
 
@@ -36,7 +37,7 @@ func (a App) Run() error {
 	appCtx, wg := setupContextAndWg(context.Background(), errorCh)
 
 	q := queue.NewQueue[entities.Message]()
-	repo := repository.NewStubRepo(cfg.TempConfig.HookId, cfg.TempConfig.ConfirmationString, cfg.TempConfig.TgChatId)
+	repo := repository.NewStubRepo(cfg.TempConfig.InteractionId, cfg.TempConfig.ConfirmationString, cfg.TempConfig.TgUserId, cfg.TempConfig.TgChatId)
 
 	forwarderService := forwarder.New(cfg.ForwarderConfig, q, repo, slog.Default())
 	wg.Add(1)
@@ -115,6 +116,7 @@ func setupHandlers(cfg *config.Config, q *queue.Queue[entities.Message], repo re
 	return &handlers.Handlers{
 		VkCallbackHandler: vk_callback_handler.New(q, repo, slog.Default()),
 		Metrics:           metrics_handler.New(cfg.MetricsConfig),
+		Debug:             debug_handler.New(cfg.HttpServerConfig.Host, repo),
 		//todo: TgBotUIHandler?
 	}
 }

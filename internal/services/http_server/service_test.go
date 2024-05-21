@@ -29,7 +29,7 @@ func (s handlerStub) Handle(_ *fasthttp.RequestCtx) {}
 
 func TestServiceStartStop(t *testing.T) {
 	h := &handlers.Handlers{Metrics: &handlerStub{}, VkCallbackHandler: &handlerStub{}}
-	s := New(&Config{Address: "localhost", Port: 1337}, h, slog.Default())
+	s := New(&Config{Host: "localhost", Port: 1337}, h, slog.Default())
 
 	var ok bool
 	p := gomonkey.ApplyFunc(net.Listen, func(network string, address string) (net.Listener, error) {
@@ -56,7 +56,7 @@ func TestServiceStartStop(t *testing.T) {
 
 func TestVkHandler(t *testing.T) {
 	type args struct {
-		hookId             string
+		interactionId      string
 		confirmationString string
 		reqBody            []byte
 		url                string
@@ -73,7 +73,7 @@ func TestVkHandler(t *testing.T) {
 			name: "json unmarshal error",
 			args: args{
 				reqBody: []byte(`{"type":"",}`),
-				url:     "http://localhost:8080/api/vk/callback/hookId",
+				url:     "http://localhost:8080/api/vk/callback/interactionId",
 			},
 			statusCode:   400,
 			bodyContains: []string{"json unmarshal error"},
@@ -82,7 +82,7 @@ func TestVkHandler(t *testing.T) {
 			name: "unsupported message type",
 			args: args{
 				reqBody: []byte(`{"type":"unsupported_message_type","event":"test_event_id","v":"1.0","group_id":12345}`),
-				url:     "http://localhost:8080/api/vk/callback/hookId",
+				url:     "http://localhost:8080/api/vk/callback/interactionId",
 			},
 			statusCode:   400,
 			bodyContains: []string{"unsupported message type: unsupported_message_type"},
@@ -100,9 +100,9 @@ func TestVkHandler(t *testing.T) {
 		{
 			name: "handleChallenge: interaction not found",
 			args: args{
-				hookId:  "hookId",
-				reqBody: []byte(`{"type":"confirmation","event":"test_event_id","v":"1.0","group_id":12345}`),
-				url:     "http://localhost:8080/api/vk/callback/hookId2",
+				interactionId: "interactionId",
+				reqBody:       []byte(`{"type":"confirmation","event":"test_event_id","v":"1.0","group_id":12345}`),
+				url:           "http://localhost:8080/api/vk/callback/interactionId2",
 			},
 			statusCode:   400,
 			bodyContains: []string{"interaction not found"},
@@ -110,10 +110,10 @@ func TestVkHandler(t *testing.T) {
 		{
 			name: "handleChallenge: ok",
 			args: args{
-				hookId:             "hookId",
+				interactionId:      "interactionId",
 				confirmationString: "confirmationString",
 				reqBody:            []byte(`{"type":"confirmation","event":"test_event_id","v":"1.0","group_id":12345}`),
-				url:                "http://localhost:8080/api/vk/callback/hookId",
+				url:                "http://localhost:8080/api/vk/callback/interactionId",
 			},
 			statusCode:   200,
 			bodyContains: []string{"confirmationString"},
@@ -150,7 +150,7 @@ func TestVkHandler(t *testing.T) {
 			name: "handleMessage[message_new]: json unmarshal error",
 			args: args{
 				reqBody: []byte(`{"type":"message_new","event":"test_event_id","v":"1.0","group_id":12345,"object":{"message":{"from_id":1,"text":"test text}}}`),
-				url:     "http://localhost:8080/api/vk/callback/hookId",
+				url:     "http://localhost:8080/api/vk/callback/interactionId",
 			},
 			statusCode:   400,
 			bodyContains: []string{"json unmarshal error"},
@@ -159,7 +159,7 @@ func TestVkHandler(t *testing.T) {
 			name: "handleMessage[message_edit]: json unmarshal error",
 			args: args{
 				reqBody: []byte(`{"type":"message_edit","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text}}`),
-				url:     "http://localhost:8080/api/vk/callback/hookId",
+				url:     "http://localhost:8080/api/vk/callback/interactionId",
 			},
 			statusCode:   400,
 			bodyContains: []string{"json unmarshal error"},
@@ -168,7 +168,7 @@ func TestVkHandler(t *testing.T) {
 			name: "handleMessage[message_reply]: json unmarshal error",
 			args: args{
 				reqBody: []byte(`{"type":"message_reply","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text}}`),
-				url:     "http://localhost:8080/api/vk/callback/hookId",
+				url:     "http://localhost:8080/api/vk/callback/interactionId",
 			},
 			statusCode:   400,
 			bodyContains: []string{"json unmarshal error"},
@@ -176,9 +176,9 @@ func TestVkHandler(t *testing.T) {
 		{
 			name: "handleMessage[message_new]: interaction does not exist",
 			args: args{
-				hookId:  "hookId",
-				reqBody: []byte(`{"type":"message_new","event":"test_event_id","v":"1.0","group_id":12345,"object":{"message":{"from_id":1,"text":"test text"}}}`),
-				url:     "http://localhost:8080/api/vk/callback/hookId2",
+				interactionId: "interactionId",
+				reqBody:       []byte(`{"type":"message_new","event":"test_event_id","v":"1.0","group_id":12345,"object":{"message":{"from_id":1,"text":"test text"}}}`),
+				url:           "http://localhost:8080/api/vk/callback/interactionId2",
 			},
 			statusCode:   400,
 			bodyContains: []string{"interaction does not exist"},
@@ -186,9 +186,9 @@ func TestVkHandler(t *testing.T) {
 		{
 			name: "handleMessage[message_edit]: interaction does not exist",
 			args: args{
-				hookId:  "hookId",
-				reqBody: []byte(`{"type":"message_edit","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text"}}`),
-				url:     "http://localhost:8080/api/vk/callback/hookId2",
+				interactionId: "interactionId",
+				reqBody:       []byte(`{"type":"message_edit","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text"}}`),
+				url:           "http://localhost:8080/api/vk/callback/interactionId2",
 			},
 			statusCode:   400,
 			bodyContains: []string{"interaction does not exist"},
@@ -196,9 +196,9 @@ func TestVkHandler(t *testing.T) {
 		{
 			name: "handleMessage[message_reply]: interaction does not exist",
 			args: args{
-				hookId:  "hookId",
-				reqBody: []byte(`{"type":"message_reply","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text"}}`),
-				url:     "http://localhost:8080/api/vk/callback/hookId2",
+				interactionId: "interactionId",
+				reqBody:       []byte(`{"type":"message_reply","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text"}}`),
+				url:           "http://localhost:8080/api/vk/callback/interactionId2",
 			},
 			statusCode:   400,
 			bodyContains: []string{"interaction does not exist"},
@@ -206,14 +206,14 @@ func TestVkHandler(t *testing.T) {
 		{
 			name: "handleMessage[message_new]: ok",
 			args: args{
-				hookId:  "hookId",
-				reqBody: []byte(`{"type":"message_new","event":"test_event_id","v":"1.0","group_id":12345,"object":{"message":{"from_id":1,"text":"test text"}}}`),
-				url:     "http://localhost:8080/api/vk/callback/hookId",
+				interactionId: "interactionId",
+				reqBody:       []byte(`{"type":"message_new","event":"test_event_id","v":"1.0","group_id":12345,"object":{"message":{"from_id":1,"text":"test text"}}}`),
+				url:           "http://localhost:8080/api/vk/callback/interactionId",
 			},
 			statusCode:   200,
 			bodyContains: []string{"ok"},
 			queueContents: []entities.Message{{
-				InteractionId: "hookId",
+				InteractionId: "interactionId",
 				Type:          entities.MessageTypeNew,
 				Text:          "test text",
 				VkSenderId:    1,
@@ -222,14 +222,14 @@ func TestVkHandler(t *testing.T) {
 		{
 			name: "handleMessage[message_edit]: ok",
 			args: args{
-				hookId:  "hookId",
-				reqBody: []byte(`{"type":"message_edit","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text"}}`),
-				url:     "http://localhost:8080/api/vk/callback/hookId",
+				interactionId: "interactionId",
+				reqBody:       []byte(`{"type":"message_edit","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text"}}`),
+				url:           "http://localhost:8080/api/vk/callback/interactionId",
 			},
 			statusCode:   200,
 			bodyContains: []string{"ok"},
 			queueContents: []entities.Message{{
-				InteractionId: "hookId",
+				InteractionId: "interactionId",
 				Type:          entities.MessageTypeEdit,
 				Text:          "test text",
 				VkSenderId:    1,
@@ -238,14 +238,14 @@ func TestVkHandler(t *testing.T) {
 		{
 			name: "handleMessage[message_reply]: ok",
 			args: args{
-				hookId:  "hookId",
-				reqBody: []byte(`{"type":"message_reply","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text"}}`),
-				url:     "http://localhost:8080/api/vk/callback/hookId",
+				interactionId: "interactionId",
+				reqBody:       []byte(`{"type":"message_reply","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text"}}`),
+				url:           "http://localhost:8080/api/vk/callback/interactionId",
 			},
 			statusCode:   200,
 			bodyContains: []string{"ok"},
 			queueContents: []entities.Message{{
-				InteractionId: "hookId",
+				InteractionId: "interactionId",
 				Type:          entities.MessageTypeReply,
 				Text:          "test text",
 				VkSenderId:    1,
@@ -255,7 +255,7 @@ func TestVkHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			q, _, client := setup(t, tt.args.hookId, tt.args.confirmationString)
+			q, _, client := setup(t, tt.args.interactionId, tt.args.confirmationString)
 			wg := sync.WaitGroup{}
 			wg.Add(1)
 			go func() {
@@ -292,18 +292,18 @@ func TestVkHandler(t *testing.T) {
 	}
 }
 
-func setup(t *testing.T, hookId, confirmationString string) (*queue.Queue[entities.Message], *bytes.Buffer, *http.Client) {
+func setup(t *testing.T, interactionId, confirmationString string) (*queue.Queue[entities.Message], *bytes.Buffer, *http.Client) {
 	t.Helper()
 	q := queue.NewQueue[entities.Message]()
 	buf := new(bytes.Buffer)
 	log := slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{}))
-	repo := repository.NewStubRepo(hookId, confirmationString, 123)
+	repo := repository.NewStubRepo(interactionId, confirmationString, 321, 123)
 	h := &handlers.Handlers{Metrics: &handlerStub{}, VkCallbackHandler: vk_callback_handler.New(q, repo, log)}
 
 	listener := fasthttputil.NewInmemoryListener()
 	p := gomonkey.ApplyFunc(net.Listen, func(network string, address string) (net.Listener, error) { return listener, nil })
 	t.Cleanup(p.Reset)
-	s := New(&Config{Address: "localhost", Port: 1337}, h, log)
+	s := New(&Config{Host: "localhost", Port: 1337}, h, log)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)

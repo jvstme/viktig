@@ -1,12 +1,11 @@
 package repository
 
-type Interaction struct { // todo: better naming for an item of forwarding
-	id                 string
-	ConfirmationString string
-	TgChatId           int
-}
+import "viktig/internal/entities"
 
 type Repository interface {
-	GetInteraction(id string) (*Interaction, error)
+	NewInteraction(userId, tgChatId int, confirmationString string) (*entities.Interaction, error)
 	ExistsInteraction(id string) bool
+	GetInteraction(id string) (*entities.Interaction, error)
+
+	NewUser(userId int) (*entities.User, error)
 }

@@ -201,14 +201,14 @@ func TestService(t *testing.T) {
 	})
 }
 
-func setup(t *testing.T, hookId, confirmationString, botToken string, tgChatId int) (*queue.Queue[entities.Message], *bytes.Buffer, *Service) {
+func setup(t *testing.T, interactionId, confirmationString, botToken string, tgChatId int) (*queue.Queue[entities.Message], *bytes.Buffer, *Service) {
 	t.Helper()
 	q := queue.NewQueue[entities.Message]()
 
 	buf := new(bytes.Buffer)
 	log := slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{}))
 
-	repo := repository.NewStubRepo(hookId, confirmationString, tgChatId)
+	repo := repository.NewStubRepo(interactionId, confirmationString, 123, tgChatId)
 
 	s := New(&Config{BotToken: botToken}, q, repo, log)
 

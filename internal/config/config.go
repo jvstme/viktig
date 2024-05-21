@@ -20,7 +20,8 @@ type Config struct {
 
 type TempConfig struct {
 	TgChatId           int    `yaml:"tg_chat_id" validate:"required"`
-	HookId             string `yaml:"community_hook_id" validate:"required"`
+	TgUserId           int    `yaml:"tg_user_id" validate:"required"`
+	InteractionId      string `yaml:"interaction_id" validate:"required"`
 	ConfirmationString string `yaml:"vk_confirmation_string" validate:"required"`
 }
 
