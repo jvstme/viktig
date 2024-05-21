@@ -31,11 +31,6 @@ func New(cfg *Config, handlers *handlers.Handlers, l *slog.Logger) *HttpServer {
 }
 
 func (s *HttpServer) Run(ctx context.Context) error {
-	r := router.New()
-	r.GET("/metrics", s.handlers.Metrics.Handle)
-	api := r.Group("/api")
-	api.POST(fmt.Sprintf("/vk/callback/{%s}", vk_callback_handler.HookIdKey), s.handlers.VkCallbackHandler.Handle)
-
 	socketAddress := fmt.Sprintf("%s:%d", s.Address, s.Port)
 	l, err := net.Listen("tcp", socketAddress)
 	if err != nil {
@@ -48,5 +43,17 @@ func (s *HttpServer) Run(ctx context.Context) error {
 	}()
 
 	s.l.Info("starting http server", "address", socketAddress)
-	return fasthttp.Serve(l, r.Handler)
+	return fasthttp.Serve(l, s.setupRouter().Handler)
+}
+
+func (s *HttpServer) setupRouter() *router.Router {
+	r := router.New()
+	if s.handlers.Metrics != nil {
+		r.GET("/metrics", s.handlers.Metrics.Handle)
+	}
+	api := r.Group("/api")
+	if s.handlers.VkCallbackHandler != nil {
+		api.POST(fmt.Sprintf("/vk/callback/{%s}", vk_callback_handler.HookIdKey), s.handlers.VkCallbackHandler.Handle)
+	}
+	return r
 }

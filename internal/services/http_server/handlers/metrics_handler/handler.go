@@ -14,6 +14,10 @@ type metricsHandler struct {
 }
 
 func New(cfg *Config) handlers.Handler {
+	if cfg.MetricsAuthToken == "" {
+		return nil
+	}
+
 	return &metricsHandler{token: cfg.MetricsAuthToken}
 }
 

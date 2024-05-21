@@ -8,8 +8,13 @@ import (
 )
 
 func BearerTokenAuth(token string, handler fasthttp.RequestHandler) fasthttp.RequestHandler {
-	expectedHeader := []byte(fmt.Sprintf("Bearer %s", token))
+	if token == "" {
+		return func(ctx *fasthttp.RequestCtx) {
+			ctx.Error("unauthorized", fasthttp.StatusUnauthorized)
+		}
+	}
 
+	expectedHeader := []byte(fmt.Sprintf("Bearer %s", token))
 	return func(ctx *fasthttp.RequestCtx) {
 		header := ctx.Request.Header.Peek("Authorization")
 		if reflect.DeepEqual(header, expectedHeader) {

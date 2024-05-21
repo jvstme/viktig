@@ -15,7 +15,7 @@ type Config struct {
 	ForwarderConfig  *forwarder.Config       `yaml:"forwarder_config" validate:"required"`
 	HttpServerConfig *http_server.Config     `yaml:"http_config" validate:"required"`
 	TempConfig       *TempConfig             `yaml:"temp_config" validate:"required"`
-	MetricsConfig    *metrics_handler.Config `yaml:"temp_config"`
+	MetricsConfig    *metrics_handler.Config `yaml:"metrics_config"`
 }
 
 type TempConfig struct {

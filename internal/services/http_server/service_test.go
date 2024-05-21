@@ -120,7 +120,7 @@ func TestVkHandler(t *testing.T) {
 		},
 		// handleMessage:
 		{
-			name: "handleChallenge[message_new]: no hook id",
+			name: "handleMessage[message_new]: no hook id",
 			args: args{
 				reqBody: []byte(`{"type":"message_new","event":"test_event_id","v":"1.0","group_id":12345}`),
 				url:     "http://localhost:8080/api/vk/callback",
@@ -129,7 +129,7 @@ func TestVkHandler(t *testing.T) {
 			bodyContains: []string{"Not Found"},
 		},
 		{
-			name: "handleChallenge[message_edit]: no hook id",
+			name: "handleMessage[message_edit]: no hook id",
 			args: args{
 				reqBody: []byte(`{"type":"message_edit","event":"test_event_id","v":"1.0","group_id":12345}`),
 				url:     "http://localhost:8080/api/vk/callback",
@@ -138,7 +138,7 @@ func TestVkHandler(t *testing.T) {
 			bodyContains: []string{"Not Found"},
 		},
 		{
-			name: "handleChallenge[message_reply]: no hook id",
+			name: "handleMessage[message_reply]: no hook id",
 			args: args{
 				reqBody: []byte(`{"type":"message_reply","event":"test_event_id","v":"1.0","group_id":12345}`),
 				url:     "http://localhost:8080/api/vk/callback",
@@ -147,7 +147,7 @@ func TestVkHandler(t *testing.T) {
 			bodyContains: []string{"Not Found"},
 		},
 		{
-			name: "handleChallenge[message_new]: json unmarshal error",
+			name: "handleMessage[message_new]: json unmarshal error",
 			args: args{
 				reqBody: []byte(`{"type":"message_new","event":"test_event_id","v":"1.0","group_id":12345,"object":{"message":{"from_id":1,"text":"test text}}}`),
 				url:     "http://localhost:8080/api/vk/callback/hookId",
@@ -156,7 +156,7 @@ func TestVkHandler(t *testing.T) {
 			bodyContains: []string{"json unmarshal error"},
 		},
 		{
-			name: "handleChallenge[message_edit]: json unmarshal error",
+			name: "handleMessage[message_edit]: json unmarshal error",
 			args: args{
 				reqBody: []byte(`{"type":"message_edit","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text}}`),
 				url:     "http://localhost:8080/api/vk/callback/hookId",
@@ -165,7 +165,7 @@ func TestVkHandler(t *testing.T) {
 			bodyContains: []string{"json unmarshal error"},
 		},
 		{
-			name: "handleChallenge[message_reply]: json unmarshal error",
+			name: "handleMessage[message_reply]: json unmarshal error",
 			args: args{
 				reqBody: []byte(`{"type":"message_reply","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text}}`),
 				url:     "http://localhost:8080/api/vk/callback/hookId",
@@ -174,7 +174,7 @@ func TestVkHandler(t *testing.T) {
 			bodyContains: []string{"json unmarshal error"},
 		},
 		{
-			name: "handleChallenge[message_new]: interaction does not exist",
+			name: "handleMessage[message_new]: interaction does not exist",
 			args: args{
 				hookId:  "hookId",
 				reqBody: []byte(`{"type":"message_new","event":"test_event_id","v":"1.0","group_id":12345,"object":{"message":{"from_id":1,"text":"test text"}}}`),
@@ -184,7 +184,7 @@ func TestVkHandler(t *testing.T) {
 			bodyContains: []string{"interaction does not exist"},
 		},
 		{
-			name: "handleChallenge[message_edit]: interaction does not exist",
+			name: "handleMessage[message_edit]: interaction does not exist",
 			args: args{
 				hookId:  "hookId",
 				reqBody: []byte(`{"type":"message_edit","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text"}}`),
@@ -194,7 +194,7 @@ func TestVkHandler(t *testing.T) {
 			bodyContains: []string{"interaction does not exist"},
 		},
 		{
-			name: "handleChallenge[message_reply]: interaction does not exist",
+			name: "handleMessage[message_reply]: interaction does not exist",
 			args: args{
 				hookId:  "hookId",
 				reqBody: []byte(`{"type":"message_reply","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text"}}`),
@@ -204,7 +204,7 @@ func TestVkHandler(t *testing.T) {
 			bodyContains: []string{"interaction does not exist"},
 		},
 		{
-			name: "handleChallenge[message_new]: ok",
+			name: "handleMessage[message_new]: ok",
 			args: args{
 				hookId:  "hookId",
 				reqBody: []byte(`{"type":"message_new","event":"test_event_id","v":"1.0","group_id":12345,"object":{"message":{"from_id":1,"text":"test text"}}}`),
@@ -220,7 +220,7 @@ func TestVkHandler(t *testing.T) {
 			}},
 		},
 		{
-			name: "handleChallenge[message_edit]: ok",
+			name: "handleMessage[message_edit]: ok",
 			args: args{
 				hookId:  "hookId",
 				reqBody: []byte(`{"type":"message_edit","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text"}}`),
@@ -236,7 +236,7 @@ func TestVkHandler(t *testing.T) {
 			}},
 		},
 		{
-			name: "handleChallenge[message_reply]: ok",
+			name: "handleMessage[message_reply]: ok",
 			args: args{
 				hookId:  "hookId",
 				reqBody: []byte(`{"type":"message_reply","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1,"text":"test text"}}`),

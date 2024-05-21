@@ -37,6 +37,13 @@ type vkCallbackHandler struct {
 }
 
 func New(q *queue.Queue[entities.Message], repo repository.Repository, l *slog.Logger) handlers.Handler {
+	if q == nil || repo == nil {
+		return nil
+	}
+	if l == nil {
+		l = slog.Default()
+	}
+
 	return &vkCallbackHandler{q: q, repo: repo, l: l.With("name", "VkCallbackHandler")}
 }
 
@@ -75,7 +82,7 @@ func (h *vkCallbackHandler) Handle(ctx *fasthttp.RequestCtx) {
 func (h *vkCallbackHandler) handleChallenge(ctx *fasthttp.RequestCtx) error {
 	hookId, ok := ctx.UserValue(HookIdKey).(string)
 	if !ok || hookId == "" {
-		// should be impossible by still check
+		// should be impossible but still check
 		return errors.New("invalid hookId")
 	}
 
@@ -96,7 +103,7 @@ func (h *vkCallbackHandler) handleChallenge(ctx *fasthttp.RequestCtx) error {
 func (h *vkCallbackHandler) handleMessage(ctx *fasthttp.RequestCtx, messageType entities.MessageType) error {
 	hookId, ok := ctx.UserValue(HookIdKey).(string)
 	if !ok || hookId == "" {
-		// should be impossible by still check
+		// should be impossible but still check
 		return errors.New("invalid hookId")
 	}
 
