@@ -1,9 +1,10 @@
-package repository
+package stub_repo
 
 import (
 	"fmt"
 	"github.com/hashicorp/go-uuid"
 	"viktig/internal/entities"
+	"viktig/internal/repository"
 )
 
 type stubRepo struct {
@@ -11,7 +12,7 @@ type stubRepo struct {
 	user        entities.User
 }
 
-func NewStubRepo(interactionId, confirmationString string, userId, tgChatId int) Repository {
+func New(interactionId, confirmationString string, userId, tgChatId int) repository.Repository {
 	return &stubRepo{
 		interaction: entities.Interaction{
 			Id:                 interactionId,

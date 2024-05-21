@@ -10,7 +10,7 @@ import (
 
 	"viktig/internal/entities"
 	"viktig/internal/queue"
-	"viktig/internal/repository"
+	"viktig/internal/repository/stub_repo"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/stretchr/testify/assert"
@@ -208,7 +208,7 @@ func setup(t *testing.T, interactionId, confirmationString, botToken string, tgC
 	buf := new(bytes.Buffer)
 	log := slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{}))
 
-	repo := repository.NewStubRepo(interactionId, confirmationString, 123, tgChatId)
+	repo := stub_repo.New(interactionId, confirmationString, 123, tgChatId)
 
 	s := New(&Config{BotToken: botToken}, q, repo, log)
 

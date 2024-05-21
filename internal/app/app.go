@@ -9,6 +9,7 @@ import (
 	"viktig/internal/entities"
 	"viktig/internal/queue"
 	"viktig/internal/repository"
+	"viktig/internal/repository/in_memory_repo"
 	"viktig/internal/services/forwarder"
 	"viktig/internal/services/http_server"
 	"viktig/internal/services/http_server/handlers"
@@ -37,7 +38,7 @@ func (a App) Run() error {
 	appCtx, wg := setupContextAndWg(context.Background(), errorCh)
 
 	q := queue.NewQueue[entities.Message]()
-	repo := repository.NewStubRepo(cfg.TempConfig.InteractionId, cfg.TempConfig.ConfirmationString, cfg.TempConfig.TgUserId, cfg.TempConfig.TgChatId)
+	repo := in_memory_repo.New()
 
 	forwarderService := forwarder.New(cfg.ForwarderConfig, q, repo, slog.Default())
 	wg.Add(1)

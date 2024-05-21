@@ -13,7 +13,7 @@ import (
 
 	"viktig/internal/entities"
 	"viktig/internal/queue"
-	"viktig/internal/repository"
+	"viktig/internal/repository/stub_repo"
 	"viktig/internal/services/http_server/handlers"
 	"viktig/internal/services/http_server/handlers/vk_callback_handler"
 
@@ -297,7 +297,7 @@ func setup(t *testing.T, interactionId, confirmationString string) (*queue.Queue
 	q := queue.NewQueue[entities.Message]()
 	buf := new(bytes.Buffer)
 	log := slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{}))
-	repo := repository.NewStubRepo(interactionId, confirmationString, 321, 123)
+	repo := stub_repo.New(interactionId, confirmationString, 321, 123)
 	h := &handlers.Handlers{Metrics: &handlerStub{}, VkCallbackHandler: vk_callback_handler.New(q, repo, log)}
 
 	listener := fasthttputil.NewInmemoryListener()
