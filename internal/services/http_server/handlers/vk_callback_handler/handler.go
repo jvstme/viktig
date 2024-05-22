@@ -18,18 +18,10 @@ import (
 )
 
 const (
-	messageTypeChallenge = "confirmation"
-
 	responseBodyOk = "ok"
 
 	InteractionIdKey = "interactionId"
 )
-
-var ForwardedMessageTypes = map[string]entities.MessageType{
-	"message_new":   entities.MessageTypeNew,
-	"message_edit":  entities.MessageTypeEdit,
-	"message_reply": entities.MessageTypeReply,
-}
 
 type vkCallbackHandler struct {
 	repo repository.Repository
@@ -57,27 +49,27 @@ func (h *vkCallbackHandler) Handle(ctx *fasthttp.RequestCtx) {
 		}
 	}()
 
-	dto := &typeDto{}
+	dto := &vkCallbackDto{}
 	if err = jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
 		err = fmt.Errorf("json unmarshal error: %w", err)
 		return
 	}
 
 	h.l.Info("received vk event", "type", dto.Type, "id", dto.EventId, "groupId", dto.GroupId, "apiVersion", dto.ApiVersion)
-	metrics.VKEventsReceived.With(prometheus.Labels{"type": dto.Type}).Inc()
+	metrics.VKEventsReceived.With(prometheus.Labels{"type": string(dto.Type)}).Inc()
 
-	if dto.Type == messageTypeChallenge {
+	switch dto.Type {
+	case messageTypeChallenge:
 		err = h.handleChallenge(ctx)
 		return
-	}
-	if messageType, ok := ForwardedMessageTypes[dto.Type]; ok {
-		err = h.handleMessage(ctx, messageType)
+	case messageTypeNew, messageTypeEdit, messageTypeReply:
+		err = h.handleMessage(ctx, dto.Payload)
 		return
+	default:
+		text := fmt.Sprintf("unsupported message type: %s", dto.Type)
+		h.l.Warn(text, "messageType", dto.Type)
+		ctx.Error(text, fasthttp.StatusBadRequest)
 	}
-
-	text := fmt.Sprintf("unsupported message type: %s", dto.Type)
-	h.l.Warn(text, "messageType", dto.Type)
-	ctx.Error(text, fasthttp.StatusBadRequest)
 }
 
 func (h *vkCallbackHandler) handleChallenge(ctx *fasthttp.RequestCtx) error {
@@ -97,25 +89,10 @@ func (h *vkCallbackHandler) handleChallenge(ctx *fasthttp.RequestCtx) error {
 	return nil
 }
 
-func (h *vkCallbackHandler) handleMessage(ctx *fasthttp.RequestCtx, messageType entities.MessageType) error {
+func (h *vkCallbackHandler) handleMessage(ctx *fasthttp.RequestCtx, data *vkMessageData) error {
 	interactionId, err := getInteractionId(ctx)
 	if err != nil {
 		return err
-	}
-
-	var message *vkMessage
-	if messageType == entities.MessageTypeNew {
-		dto := &newMessageDto{}
-		if err = jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
-			return err
-		}
-		message = &dto.Object.Message
-	} else {
-		dto := &editOrReplyMessageDto{}
-		if err = jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
-			return err
-		}
-		message = &dto.Object
 	}
 
 	if !h.repo.ExistsInteraction(interactionId) {
@@ -125,9 +102,9 @@ func (h *vkCallbackHandler) handleMessage(ctx *fasthttp.RequestCtx, messageType 
 	//todo: put blocks. add timeout
 	h.q.Put(entities.Message{
 		InteractionId: interactionId,
-		Type:          messageType,
-		Text:          message.Text,
-		VkSenderId:    message.SenderId,
+		Type:          ForwardedMessageTypes[data.MessageType],
+		Text:          data.Text,
+		VkSenderId:    data.SenderId,
 	})
 
 	ctx.Response.SetStatusCode(fasthttp.StatusOK)
