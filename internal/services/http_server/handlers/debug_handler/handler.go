@@ -2,7 +2,6 @@ package debug_handler
 
 import (
 	"fmt"
-
 	"viktig/internal/entities"
 	"viktig/internal/repository"
 	"viktig/internal/services/http_server/handlers"
@@ -31,10 +30,11 @@ func (h *debugHandler) Handle(ctx *fasthttp.RequestCtx) {
 
 	request := &debugRequestDto{}
 	if err = jsoniter.Unmarshal(ctx.Request.Body(), request); err != nil {
+		err = fmt.Errorf("json unmarshal error: %w", err)
 		return
 	}
 	switch data := request.Data.(type) {
-	case *registerInteractionRequestData:
+	case *newInteractionRequestData:
 		if err = h.handleRegisterInteraction(ctx, data); err != nil {
 			return
 		}
@@ -45,7 +45,11 @@ func (h *debugHandler) Handle(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (h *debugHandler) handleRegisterInteraction(ctx *fasthttp.RequestCtx, data *registerInteractionRequestData) error {
+func (h *debugHandler) handleRegisterInteraction(ctx *fasthttp.RequestCtx, data *newInteractionRequestData) error {
+	if data == nil {
+		return fmt.Errorf("request data is nil")
+	}
+
 	interaction := &entities.Interaction{
 		Id:                 uuid.New(),
 		UserId:             data.UserId,
@@ -57,7 +61,7 @@ func (h *debugHandler) handleRegisterInteraction(ctx *fasthttp.RequestCtx, data 
 		return err
 	}
 
-	response := &registerInteractionResponseDto{
+	response := &newInteractionResponseDto{
 		CallbackUrl: fmt.Sprintf("%s/callback/%s", h.host, interaction.Id),
 	}
 	bytes, err := jsoniter.Marshal(response)
@@ -71,6 +75,10 @@ func (h *debugHandler) handleRegisterInteraction(ctx *fasthttp.RequestCtx, data 
 }
 
 func (h *debugHandler) handleNewUser(ctx *fasthttp.RequestCtx, data *newUserRequestData) error {
+	if data == nil {
+		return fmt.Errorf("request data is nil")
+	}
+
 	err := h.repo.StoreUser(&entities.User{Id: data.UserId})
 	if err != nil {
 		return err
