@@ -125,13 +125,22 @@ func TestVkHandler(t *testing.T) {
 		},
 		// handleChallenge:
 		{
-			name: "handleChallenge: no hook id",
+			name: "handleChallenge: no interactionId",
 			args: args{
 				reqBody: []byte(`{"type":"confirmation","event":"test_event_id","v":"1.0","group_id":12345}`),
 				url:     "http://localhost:8080/api/vk/callback",
 			},
 			statusCode:   404,
 			bodyContains: []string{"Not Found"},
+		},
+		{
+			name: "handleChallenge: bad interactionId",
+			args: args{
+				reqBody: []byte(`{"type":"confirmation","event":"test_event_id","v":"1.0","group_id":12345}`),
+				url:     "http://localhost:8080/api/vk/callback/invalid-uuid",
+			},
+			statusCode:   400,
+			bodyContains: []string{"invalid interactionId"},
 		},
 		{
 			name: "handleChallenge: interaction not found",
@@ -156,7 +165,7 @@ func TestVkHandler(t *testing.T) {
 		},
 		// handleMessage:
 		{
-			name: "handleMessage[message_new]: no hook id",
+			name: "handleMessage[message_new]: no interactionId",
 			args: args{
 				reqBody: []byte(`{"type":"message_new","event":"test_event_id","v":"1.0","group_id":12345}`),
 				url:     "http://localhost:8080/api/vk/callback",
@@ -165,7 +174,7 @@ func TestVkHandler(t *testing.T) {
 			bodyContains: []string{"Not Found"},
 		},
 		{
-			name: "handleMessage[message_edit]: no hook id",
+			name: "handleMessage[message_edit]: no interactionId",
 			args: args{
 				reqBody: []byte(`{"type":"message_edit","event":"test_event_id","v":"1.0","group_id":12345}`),
 				url:     "http://localhost:8080/api/vk/callback",
@@ -174,7 +183,7 @@ func TestVkHandler(t *testing.T) {
 			bodyContains: []string{"Not Found"},
 		},
 		{
-			name: "handleMessage[message_reply]: no hook id",
+			name: "handleMessage[message_reply]: no interactionId",
 			args: args{
 				reqBody: []byte(`{"type":"message_reply","event":"test_event_id","v":"1.0","group_id":12345}`),
 				url:     "http://localhost:8080/api/vk/callback",
