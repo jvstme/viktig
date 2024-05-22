@@ -1,13 +1,17 @@
+temp_config:
+  # To forward messages to yourself, find your ID with https://t.me/userinfobot.
+  # Don't forget to /start a conversation with the bot you created.
+  tg_chat_id: 123456789
+  community_hook_id: "00000000-0000-0000-0000-000000000000"
+  vk_confirmation_string: "some_confirmation_string"
+
 forwarder_config:
-  tg_config:
-    # Create a bot and get the token with https://t.me/BotFather.
-    token: "1234567890:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-    # To forward messages to yourself, find your ID with https://t.me/userinfobot.
-    # Don't forget to /start a conversation with the bot you created.
-    chat_id: 123456789
+  # Create a bot and get the token with https://t.me/BotFather.
+  bot_token: "1234567890:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 http_config:
-  address: 127.0.0.1
+  address: "127.0.0.1"
   port: 1337
-  confirmation_string: abcdef
+
+metrics_config:
   metrics_auth_token: my-secret-metrics-token

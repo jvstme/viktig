@@ -8,8 +8,12 @@ import (
 	"viktig/internal/config"
 	"viktig/internal/entities"
 	"viktig/internal/queue"
+	"viktig/internal/repository"
 	"viktig/internal/services/forwarder"
 	"viktig/internal/services/http_server"
+	"viktig/internal/services/http_server/handlers"
+	"viktig/internal/services/http_server/handlers/metrics_handler"
+	"viktig/internal/services/http_server/handlers/vk_callback_handler"
 
 	"github.com/xlab/closer"
 )
@@ -32,15 +36,16 @@ func (a App) Run() error {
 	appCtx, wg := setupContextAndWg(context.Background(), errorCh)
 
 	q := queue.NewQueue[entities.Message]()
+	repo := repository.NewStubRepo(cfg.TempConfig.HookId, cfg.TempConfig.ConfirmationString, cfg.TempConfig.TgChatId)
 
-	forwarderService := forwarder.New(cfg.ForwarderConfig, q)
+	forwarderService := forwarder.New(cfg.ForwarderConfig, q, repo, slog.Default())
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		errorCh <- forwarderService.Run(appCtx)
 	}()
 
-	httpServer := http_server.New(cfg.HttpServerConfig, q)
+	httpServer := http_server.New(cfg.HttpServerConfig, setupHandlers(cfg, q, repo), slog.Default())
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -55,7 +60,7 @@ func (a App) Run() error {
 	// 		[x] Сервис 2: шлет сообщения из очереди в нужные каналы. Можно добавить ретраи
 	// 		[x] Очередь
 	// todo [ ] Сервис 3: UI бота/настройки
-	// todo [ ] К ним репо для БД. В бд храним инфу о пользователе и иже с ней
+	// todo [ ] К ним репо для БД. В бд храним инфу о пользователе и взаимодействиях иже с ней
 
 	closer.Hold()
 	return nil
@@ -104,4 +109,12 @@ func setupContextAndWg(parentCtx context.Context, errorCh chan error) (ctx conte
 	closer.Bind(cancel)
 
 	return
+}
+
+func setupHandlers(cfg *config.Config, q *queue.Queue[entities.Message], repo repository.Repository) *handlers.Handlers {
+	return &handlers.Handlers{
+		VkCallbackHandler: vk_callback_handler.New(q, repo, slog.Default()),
+		Metrics:           metrics_handler.New(cfg.MetricsConfig),
+		//todo: TgBotUIHandler?
+	}
 }
