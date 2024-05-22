@@ -435,7 +435,7 @@ func TestDebugHandler(t *testing.T) {
 	t.Run("new user: excess", func(t *testing.T) {
 		_, client := setupDebugHandlerTest(t, "http://localhost")
 
-		code, respBody := doRequest(client, []byte(`{"action":"new_user","data":{"user_id":123,"confirmation_string":"123","tg_chat_id":321}}`))
+		code, respBody := doRequest(client, []byte(`{"action":"new_user","data":{"id":123,"confirmation_string":"test_confirmation_string","tg_chat_id":321}}`))
 
 		assert.Equal(t, 200, code)
 		assert.Equal(t, "ok", respBody)
@@ -443,10 +443,102 @@ func TestDebugHandler(t *testing.T) {
 	t.Run("new user: ok", func(t *testing.T) {
 		_, client := setupDebugHandlerTest(t, "http://localhost")
 
-		code, respBody := doRequest(client, []byte(`{"action":"new_user","data":{"user_id":123}}`))
+		code, respBody := doRequest(client, []byte(`{"action":"new_user","data":{"id":123}}`))
 
 		assert.Equal(t, 200, code)
 		assert.Equal(t, "ok", respBody)
+	})
+	// Get User
+	t.Run("get user: no request data", func(t *testing.T) {
+		_, client := setupDebugHandlerTest(t, "http://localhost")
+
+		code, respBody := doRequest(client, []byte(`{"action":"get_user"}`))
+
+		assert.Equal(t, 400, code)
+		assert.Equal(t, "request data is nil", respBody)
+	})
+	t.Run("get user: insufficient data", func(t *testing.T) {
+		_, client := setupDebugHandlerTest(t, "http://localhost")
+
+		code, respBody := doRequest(client, []byte(`{"action":"get_user","data":{}}`))
+
+		assert.Equal(t, 400, code)
+		assert.Contains(t, respBody, "validation error")
+	})
+	t.Run("get user: does not exist", func(t *testing.T) {
+		_, client := setupDebugHandlerTest(t, "http://localhost")
+
+		code, respBody := doRequest(client, []byte(`{"action":"get_user","data":{"id":123}}`))
+
+		assert.Equal(t, 400, code)
+		assert.Equal(t, "user not found", respBody)
+	})
+	t.Run("get user: excess", func(t *testing.T) {
+		repo, client := setupDebugHandlerTest(t, "http://localhost")
+		_ = repo.StoreUser(&entities.User{Id: 123})
+
+		code, respBody := doRequest(client, []byte(`{"action":"get_user","data":{"id":123,"confirmation_string":"test_confirmation_string","tg_chat_id":321}}`))
+
+		assert.Equal(t, 200, code)
+		assert.Equal(t, `{"id":123}`, respBody)
+	})
+	t.Run("get user: ok", func(t *testing.T) {
+		repo, client := setupDebugHandlerTest(t, "http://localhost")
+		_ = repo.StoreUser(&entities.User{Id: 123})
+
+		code, respBody := doRequest(client, []byte(`{"action":"get_user","data":{"id":123}}`))
+
+		assert.Equal(t, 200, code)
+		assert.Equal(t, `{"id":123}`, respBody)
+	})
+	// Delete User
+	t.Run("delete user: no request data", func(t *testing.T) {
+		_, client := setupDebugHandlerTest(t, "http://localhost")
+
+		code, respBody := doRequest(client, []byte(`{"action":"delete_user"}`))
+
+		assert.Equal(t, 400, code)
+		assert.Equal(t, "request data is nil", respBody)
+	})
+	t.Run("delete user: insufficient data", func(t *testing.T) {
+		_, client := setupDebugHandlerTest(t, "http://localhost")
+
+		code, respBody := doRequest(client, []byte(`{"action":"delete_user","data":{}}`))
+
+		assert.Equal(t, 400, code)
+		assert.Contains(t, respBody, "validation error")
+	})
+	t.Run("delete user: does not exist", func(t *testing.T) {
+		_, client := setupDebugHandlerTest(t, "http://localhost")
+
+		code, respBody := doRequest(client, []byte(`{"action":"delete_user","data":{"id":123}}`))
+
+		assert.Equal(t, 400, code)
+		assert.Equal(t, "user not found", respBody)
+	})
+	t.Run("delete user: excess", func(t *testing.T) {
+		repo, client := setupDebugHandlerTest(t, "http://localhost")
+		_ = repo.StoreUser(&entities.User{Id: 123})
+
+		code, respBody := doRequest(client, []byte(`{"action":"delete_user","data":{"id":123,"confirmation_string":"test_confirmation_string","tg_chat_id":321}}`))
+
+		user, err := repo.GetUser(123)
+		assert.Nil(t, user)
+		assert.EqualError(t, err, "user not found")
+		assert.Equal(t, 200, code)
+		assert.Equal(t, `{"id":123}`, respBody)
+	})
+	t.Run("delete user: ok", func(t *testing.T) {
+		repo, client := setupDebugHandlerTest(t, "http://localhost")
+		_ = repo.StoreUser(&entities.User{Id: 123})
+
+		code, respBody := doRequest(client, []byte(`{"action":"delete_user","data":{"id":123}}`))
+
+		user, err := repo.GetUser(123)
+		assert.Nil(t, user)
+		assert.EqualError(t, err, "user not found")
+		assert.Equal(t, 200, code)
+		assert.Equal(t, `{"id":123}`, respBody)
 	})
 	// New Interaction
 	t.Run("new interaction: no request data", func(t *testing.T) {
@@ -460,7 +552,7 @@ func TestDebugHandler(t *testing.T) {
 	t.Run("new user: insufficient data", func(t *testing.T) {
 		_, client := setupDebugHandlerTest(t, "http://localhost")
 
-		code, respBody := doRequest(client, []byte(`{"action":"new_interaction","data":{"confirmation_string":"123","tg_chat_id":321}}}`))
+		code, respBody := doRequest(client, []byte(`{"action":"new_interaction","data":{"confirmation_string":"test_confirmation_string","tg_chat_id":321}}}`))
 
 		assert.Equal(t, 400, code)
 		assert.Contains(t, respBody, "validation error")
@@ -468,7 +560,7 @@ func TestDebugHandler(t *testing.T) {
 	t.Run("new interaction: no user", func(t *testing.T) {
 		_, client := setupDebugHandlerTest(t, "http://localhost")
 
-		code, respBody := doRequest(client, []byte(`{"action":"new_interaction","data":{"user_id":123,"confirmation_string":"123","tg_chat_id":321}}`))
+		code, respBody := doRequest(client, []byte(`{"action":"new_interaction","data":{"user_id":123,"name":"test interaction","confirmation_string":"test_confirmation_string","tg_chat_id":321}}`))
 
 		assert.Equal(t, 400, code)
 		assert.Equal(t, "user not found", respBody)
@@ -480,8 +572,11 @@ func TestDebugHandler(t *testing.T) {
 		repo, client := setupDebugHandlerTest(t, "http://localhost")
 		_ = repo.StoreUser(&entities.User{Id: 123})
 
-		code, respBody := doRequest(client, []byte(`{"action":"new_interaction","data":{"extra":"field","user_id":123,"confirmation_string":"123","tg_chat_id":321}}`))
+		code, respBody := doRequest(client, []byte(`{"action":"new_interaction","data":{"extra":"field","user_id":123,"name":"test interaction","confirmation_string":"test_confirmation_string","tg_chat_id":321}}`))
 
+		interaction, err := repo.GetInteraction(interactionId)
+		assert.NoError(t, err)
+		assert.Equal(t, "test_confirmation_string", interaction.ConfirmationString)
 		assert.Equal(t, 200, code)
 		assert.Equal(t, fmt.Sprintf(`{"callback_url":"http://localhost/callback/%s"}`, interactionId), respBody)
 	})
@@ -492,9 +587,154 @@ func TestDebugHandler(t *testing.T) {
 		repo, client := setupDebugHandlerTest(t, "http://localhost")
 		_ = repo.StoreUser(&entities.User{Id: 123})
 
-		code, respBody := doRequest(client, []byte(`{"action":"new_interaction","data":{"user_id":123,"confirmation_string":"123","tg_chat_id":321}}`))
+		code, respBody := doRequest(client, []byte(`{"action":"new_interaction","data":{"user_id":123,"name":"test interaction","confirmation_string":"test_confirmation_string","tg_chat_id":321}}`))
 
+		interaction, err := repo.GetInteraction(interactionId)
+		assert.NoError(t, err)
+		assert.Equal(t, "test_confirmation_string", interaction.ConfirmationString)
 		assert.Equal(t, 200, code)
 		assert.Equal(t, fmt.Sprintf(`{"callback_url":"http://localhost/callback/%s"}`, interactionId), respBody)
+	})
+	// Get Interaction
+	t.Run("get interaction: no request data", func(t *testing.T) {
+		_, client := setupDebugHandlerTest(t, "http://localhost")
+
+		code, respBody := doRequest(client, []byte(`{"action":"get_interaction"}`))
+
+		assert.Equal(t, 400, code)
+		assert.Equal(t, "request data is nil", respBody)
+	})
+	t.Run("get interaction: insufficient data", func(t *testing.T) {
+		_, client := setupDebugHandlerTest(t, "http://localhost")
+
+		code, respBody := doRequest(client, []byte(`{"action":"get_interaction","data":{}}`))
+
+		assert.Equal(t, 400, code)
+		assert.Contains(t, respBody, "validation error")
+	})
+	t.Run("get interaction: does not exist", func(t *testing.T) {
+		repo, client := setupDebugHandlerTest(t, "http://localhost")
+		interactionId := uuid.New()
+		_ = repo.StoreUser(&entities.User{Id: 123})
+		_ = repo.StoreInteraction(&entities.Interaction{
+			Id:                 interactionId,
+			Name:               "test name",
+			UserId:             123,
+			ConfirmationString: "test confirmation string",
+			TgChatId:           321,
+		})
+
+		code, respBody := doRequest(client, []byte(fmt.Sprintf(`{"action":"get_interaction","data":{"id":"%s"}}`, uuid.New())))
+
+		assert.Equal(t, 400, code)
+		assert.Equal(t, "interaction not found", respBody)
+	})
+	t.Run("get interaction: excess", func(t *testing.T) {
+		repo, client := setupDebugHandlerTest(t, "http://localhost")
+		interactionId := uuid.New()
+		_ = repo.StoreUser(&entities.User{Id: 123})
+		_ = repo.StoreInteraction(&entities.Interaction{
+			Id:                 interactionId,
+			Name:               "test name",
+			UserId:             123,
+			ConfirmationString: "test confirmation string",
+			TgChatId:           321,
+		})
+
+		code, respBody := doRequest(client, []byte(fmt.Sprintf(`{"action":"get_interaction","data":{"id":"%s","excess":"field"}}`, interactionId)))
+
+		assert.Equal(t, 200, code)
+		assert.Equal(t, fmt.Sprintf(`{"id":"%s","name":"test name","user_id":123,"confirmation_string":"test confirmation string","tg_chat_id":321}`, interactionId), respBody)
+	})
+	t.Run("get interaction: ok", func(t *testing.T) {
+		repo, client := setupDebugHandlerTest(t, "http://localhost")
+		interactionId := uuid.New()
+		_ = repo.StoreUser(&entities.User{Id: 123})
+		_ = repo.StoreInteraction(&entities.Interaction{
+			Id:                 interactionId,
+			Name:               "test name",
+			UserId:             123,
+			ConfirmationString: "test confirmation string",
+			TgChatId:           321,
+		})
+
+		code, respBody := doRequest(client, []byte(fmt.Sprintf(`{"action":"get_interaction","data":{"id":"%s"}}`, interactionId)))
+
+		assert.Equal(t, 200, code)
+		assert.Equal(t, fmt.Sprintf(`{"id":"%s","name":"test name","user_id":123,"confirmation_string":"test confirmation string","tg_chat_id":321}`, interactionId), respBody)
+	})
+	// Delete Interaction
+	t.Run("delete interaction: no request data", func(t *testing.T) {
+		_, client := setupDebugHandlerTest(t, "http://localhost")
+
+		code, respBody := doRequest(client, []byte(`{"action":"delete_interaction"}`))
+
+		assert.Equal(t, 400, code)
+		assert.Equal(t, "request data is nil", respBody)
+	})
+	t.Run("delete interaction: insufficient data", func(t *testing.T) {
+		_, client := setupDebugHandlerTest(t, "http://localhost")
+
+		code, respBody := doRequest(client, []byte(`{"action":"delete_interaction","data":{}}`))
+
+		assert.Equal(t, 400, code)
+		assert.Contains(t, respBody, "validation error")
+	})
+	t.Run("delete interaction: does not exist", func(t *testing.T) {
+		repo, client := setupDebugHandlerTest(t, "http://localhost")
+		interactionId := uuid.New()
+		_ = repo.StoreUser(&entities.User{Id: 123})
+		_ = repo.StoreInteraction(&entities.Interaction{
+			Id:                 interactionId,
+			Name:               "test name",
+			UserId:             123,
+			ConfirmationString: "test confirmation string",
+			TgChatId:           321,
+		})
+
+		code, respBody := doRequest(client, []byte(fmt.Sprintf(`{"action":"delete_interaction","data":{"id":"%s"}}`, uuid.New())))
+
+		assert.Equal(t, 400, code)
+		assert.Equal(t, "interaction not found", respBody)
+	})
+	t.Run("delete interaction: excess", func(t *testing.T) {
+		repo, client := setupDebugHandlerTest(t, "http://localhost")
+		interactionId := uuid.New()
+		_ = repo.StoreUser(&entities.User{Id: 123})
+		_ = repo.StoreInteraction(&entities.Interaction{
+			Id:                 interactionId,
+			Name:               "test name",
+			UserId:             123,
+			ConfirmationString: "test confirmation string",
+			TgChatId:           321,
+		})
+
+		code, respBody := doRequest(client, []byte(fmt.Sprintf(`{"action":"delete_interaction","data":{"id":"%s"}}`, interactionId)))
+
+		interaction, err := repo.GetInteraction(interactionId)
+		assert.Nil(t, interaction)
+		assert.EqualError(t, err, "interaction not found")
+		assert.Equal(t, 200, code)
+		assert.Equal(t, fmt.Sprintf(`{"id":"%s","name":"test name","user_id":123,"confirmation_string":"test confirmation string","tg_chat_id":321}`, interactionId), respBody)
+	})
+	t.Run("delete interaction: ok", func(t *testing.T) {
+		repo, client := setupDebugHandlerTest(t, "http://localhost")
+		interactionId := uuid.New()
+		_ = repo.StoreUser(&entities.User{Id: 123})
+		_ = repo.StoreInteraction(&entities.Interaction{
+			Id:                 interactionId,
+			Name:               "test name",
+			UserId:             123,
+			ConfirmationString: "test confirmation string",
+			TgChatId:           321,
+		})
+
+		code, respBody := doRequest(client, []byte(fmt.Sprintf(`{"action":"delete_interaction","data":{"id":"%s"}}`, interactionId)))
+
+		interaction, err := repo.GetInteraction(interactionId)
+		assert.Nil(t, interaction)
+		assert.EqualError(t, err, "interaction not found")
+		assert.Equal(t, 200, code)
+		assert.Equal(t, fmt.Sprintf(`{"id":"%s","name":"test name","user_id":123,"confirmation_string":"test confirmation string","tg_chat_id":321}`, interactionId), respBody)
 	})
 }

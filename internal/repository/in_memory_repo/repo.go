@@ -20,8 +20,7 @@ func New() repository.Repository {
 }
 
 func (r *inMemoryRepo) GetInteraction(id uuid.UUID) (*entities.Interaction, error) {
-	strId := id.String()
-	interaction, ok := r.interactions[strId]
+	interaction, ok := r.interactions[id.String()]
 	if !ok {
 		return nil, fmt.Errorf("interaction not found")
 	}
@@ -29,8 +28,7 @@ func (r *inMemoryRepo) GetInteraction(id uuid.UUID) (*entities.Interaction, erro
 }
 
 func (r *inMemoryRepo) ExistsInteraction(id uuid.UUID) bool {
-	strId := id.String()
-	return r.interactions[strId] != nil
+	return r.interactions[id.String()] != nil
 }
 
 func (r *inMemoryRepo) StoreInteraction(interaction *entities.Interaction) error {
@@ -44,10 +42,28 @@ func (r *inMemoryRepo) StoreInteraction(interaction *entities.Interaction) error
 	return nil
 }
 
+func (r *inMemoryRepo) DeleteInteraction(id uuid.UUID) error {
+	delete(r.interactions, id.String())
+	return nil
+}
+
 func (r *inMemoryRepo) StoreUser(user *entities.User) error {
 	if user == nil {
 		return nil
 	}
 	r.users[user.Id] = user
+	return nil
+}
+
+func (r *inMemoryRepo) GetUser(id int) (*entities.User, error) {
+	user, ok := r.users[id]
+	if !ok {
+		return nil, fmt.Errorf("user not found")
+	}
+	return user, nil
+}
+
+func (r *inMemoryRepo) DeleteUser(id int) error {
+	delete(r.users, id)
 	return nil
 }
