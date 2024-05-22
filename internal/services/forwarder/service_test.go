@@ -10,9 +10,10 @@ import (
 
 	"viktig/internal/entities"
 	"viktig/internal/queue"
-	"viktig/internal/repository/stub_repo"
+	"viktig/internal/repository/in_memory_repo"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	tele "gopkg.in/telebot.v3"
 )
@@ -71,12 +72,14 @@ func TestRender(t *testing.T) {
 }
 
 func TestService(t *testing.T) {
+	interactionId := uuid.New()
+	interactionId2 := uuid.New()
 	t.Run("stop", func(t *testing.T) {
 		p := gomonkey.ApplyFunc(tele.NewBot, func(_ tele.Settings) (*tele.Bot, error) {
 			return &tele.Bot{Me: &tele.User{Username: "mock"}}, nil
 		})
 		defer p.Reset()
-		_, _, s := setup(t, "hookId", "confirmationString", "token", 123)
+		_, _, s := setup(t, interactionId, "confirmationString", "token", 123)
 		errCh := make(chan error)
 		ctx, cancel := context.WithCancel(context.Background())
 		go func() { errCh <- s.Run(ctx) }()
@@ -89,39 +92,14 @@ func TestService(t *testing.T) {
 			return &tele.Bot{Me: &tele.User{Username: "mock"}}, nil
 		})
 		defer p.Reset()
-		q, buf, s := setup(t, "hookId", "confirmationString", "token", 123)
+		q, buf, s := setup(t, interactionId, "confirmationString", "token", 123)
 		ctx, cancel := context.WithCancel(context.Background())
 		wg := sync.WaitGroup{}
 		wg.Add(1)
 		go func() { defer wg.Done(); _ = s.Run(ctx) }()
 
 		q.Put(entities.Message{
-			InteractionId: "",
-			Type:          entities.MessageTypeNew,
-			Text:          "Hello",
-			VkSenderId:    1234,
-		})
-
-		cancel()
-		wg.Wait()
-
-		logOutput := buf.String()
-		assert.Contains(t, logOutput, `get interaction failed`)
-		assert.Contains(t, logOutput, `interactionId=""`)
-	})
-	t.Run("empty interaction", func(t *testing.T) {
-		p := gomonkey.ApplyFunc(tele.NewBot, func(_ tele.Settings) (*tele.Bot, error) {
-			return &tele.Bot{Me: &tele.User{Username: "mock"}}, nil
-		})
-		defer p.Reset()
-		q, buf, s := setup(t, "hookId", "confirmationString", "token", 123)
-		ctx, cancel := context.WithCancel(context.Background())
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		go func() { defer wg.Done(); _ = s.Run(ctx) }()
-
-		q.Put(entities.Message{
-			InteractionId: "hookId2",
+			InteractionId: interactionId2,
 			Type:          entities.MessageTypeNew,
 			Text:          "Hello",
 			VkSenderId:    1234,
@@ -132,7 +110,7 @@ func TestService(t *testing.T) {
 
 		logOutput := buf.String()
 		assert.Contains(t, logOutput, `interaction not found`)
-		assert.Contains(t, logOutput, `interactionId=hookId2`)
+		assert.Contains(t, logOutput, fmt.Sprintf(`interactionId=%s`, interactionId2))
 	})
 	t.Run("send error", func(t *testing.T) {
 		fakeBot := &tele.Bot{Me: &tele.User{Username: "mock"}}
@@ -144,14 +122,14 @@ func TestService(t *testing.T) {
 				return nil, fmt.Errorf("error")
 			})
 		defer p.Reset()
-		q, buf, s := setup(t, "hookId", "confirmationString", "token", 123)
+		q, buf, s := setup(t, interactionId, "confirmationString", "token", 123)
 		ctx, cancel := context.WithCancel(context.Background())
 		wg := sync.WaitGroup{}
 		wg.Add(1)
 		go func() { defer wg.Done(); _ = s.Run(ctx) }()
 
 		q.Put(entities.Message{
-			InteractionId: "hookId",
+			InteractionId: interactionId,
 			Type:          entities.MessageTypeNew,
 			Text:          "Hello",
 			VkSenderId:    1234,
@@ -162,7 +140,7 @@ func TestService(t *testing.T) {
 
 		logOutput := buf.String()
 		assert.Contains(t, logOutput, `error sending tg message: error`)
-		assert.Contains(t, logOutput, `interactionId=hookId`)
+		assert.Contains(t, logOutput, fmt.Sprintf(`interactionId=%s`, interactionId))
 		assert.Contains(t, logOutput, `fromVkSenderId=1234`)
 		assert.Contains(t, logOutput, `toTgChatId=123`)
 	})
@@ -176,14 +154,14 @@ func TestService(t *testing.T) {
 				return &tele.Message{ID: 321}, nil
 			})
 		defer p.Reset()
-		q, buf, s := setup(t, "hookId", "confirmationString", "token", 123)
+		q, buf, s := setup(t, interactionId, "confirmationString", "token", 123)
 		ctx, cancel := context.WithCancel(context.Background())
 		wg := sync.WaitGroup{}
 		wg.Add(1)
 		go func() { defer wg.Done(); _ = s.Run(ctx) }()
 
 		q.Put(entities.Message{
-			InteractionId: "hookId",
+			InteractionId: interactionId,
 			Type:          entities.MessageTypeNew,
 			Text:          "Hello",
 			VkSenderId:    1234,
@@ -195,20 +173,27 @@ func TestService(t *testing.T) {
 		logOutput := buf.String()
 		assert.Contains(t, logOutput, `sent telegram message`)
 		assert.Contains(t, logOutput, `sentMessageId=321`)
-		assert.Contains(t, logOutput, `interactionId=hookId`)
+		assert.Contains(t, logOutput, fmt.Sprintf(`interactionId=%s`, interactionId))
 		assert.Contains(t, logOutput, `fromVkSenderId=1234`)
 		assert.Contains(t, logOutput, `toTgChatId=123`)
 	})
 }
 
-func setup(t *testing.T, interactionId, confirmationString, botToken string, tgChatId int) (*queue.Queue[entities.Message], *bytes.Buffer, *Service) {
+func setup(t *testing.T, interactionId uuid.UUID, confirmationString, botToken string, tgChatId int) (*queue.Queue[entities.Message], *bytes.Buffer, *Service) {
 	t.Helper()
 	q := queue.NewQueue[entities.Message]()
 
 	buf := new(bytes.Buffer)
 	log := slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{}))
 
-	repo := stub_repo.New(interactionId, confirmationString, 123, tgChatId)
+	repo := in_memory_repo.New()
+	_ = repo.StoreUser(&entities.User{Id: 123})
+	_ = repo.StoreInteraction(&entities.Interaction{
+		Id:                 interactionId,
+		UserId:             123,
+		ConfirmationString: confirmationString,
+		TgChatId:           tgChatId,
+	})
 
 	s := New(&Config{BotToken: botToken}, q, repo, log)
 

@@ -2,7 +2,7 @@ package in_memory_repo
 
 import (
 	"fmt"
-	"github.com/hashicorp/go-uuid"
+	"github.com/google/uuid"
 	"viktig/internal/entities"
 	"viktig/internal/repository"
 )
@@ -13,47 +13,41 @@ type inMemoryRepo struct {
 }
 
 func New() repository.Repository {
-	return &inMemoryRepo{}
+	return &inMemoryRepo{
+		users:        make(map[int]*entities.User),
+		interactions: make(map[string]*entities.Interaction),
+	}
 }
 
-func (r *inMemoryRepo) GetInteraction(id string) (*entities.Interaction, error) {
-	interaction, ok := r.interactions[id]
+func (r *inMemoryRepo) GetInteraction(id uuid.UUID) (*entities.Interaction, error) {
+	strId := id.String()
+	interaction, ok := r.interactions[strId]
 	if !ok {
 		return nil, fmt.Errorf("interaction not found")
 	}
 	return interaction, nil
 }
 
-func (r *inMemoryRepo) ExistsInteraction(id string) bool {
-	return r.interactions[id] != nil
+func (r *inMemoryRepo) ExistsInteraction(id uuid.UUID) bool {
+	strId := id.String()
+	return r.interactions[strId] != nil
 }
 
-func (r *inMemoryRepo) NewInteraction(userId, tgChatId int, confirmationString string) (*entities.Interaction, error) {
-	if _, ok := r.users[userId]; !ok {
-		return nil, fmt.Errorf("user not found")
+func (r *inMemoryRepo) StoreInteraction(interaction *entities.Interaction) error {
+	if interaction == nil {
+		return nil
 	}
-
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		return nil, err
+	if _, ok := r.users[interaction.UserId]; !ok {
+		return fmt.Errorf("user not found")
 	}
-	interaction := &entities.Interaction{
-		Id:                 id,
-		UserId:             userId,
-		ConfirmationString: confirmationString,
-		TgChatId:           tgChatId,
-	}
-	r.interactions[id] = interaction
-	return interaction, nil
+	r.interactions[interaction.Id.String()] = interaction
+	return nil
 }
 
-func (r *inMemoryRepo) NewUser(userId int) (*entities.User, error) {
-	if _, ok := r.users[userId]; ok {
-		return nil, fmt.Errorf("user %d already exists", userId)
+func (r *inMemoryRepo) StoreUser(user *entities.User) error {
+	if user == nil {
+		return nil
 	}
-	user := &entities.User{
-		Id: userId,
-	}
-	r.users[userId] = user
-	return user, nil
+	r.users[user.Id] = user
+	return nil
 }

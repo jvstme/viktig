@@ -1,11 +1,14 @@
 package repository
 
-import "viktig/internal/entities"
+import (
+	"github.com/google/uuid"
+	"viktig/internal/entities"
+)
 
 type Repository interface {
-	NewInteraction(userId, tgChatId int, confirmationString string) (*entities.Interaction, error)
-	ExistsInteraction(id string) bool
-	GetInteraction(id string) (*entities.Interaction, error)
+	StoreInteraction(interaction *entities.Interaction) error
+	ExistsInteraction(id uuid.UUID) bool
+	GetInteraction(id uuid.UUID) (*entities.Interaction, error)
 
-	NewUser(userId int) (*entities.User, error)
+	StoreUser(user *entities.User) error
 }

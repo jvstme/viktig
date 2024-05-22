@@ -11,6 +11,7 @@ import (
 	"viktig/internal/repository"
 	"viktig/internal/services/http_server/handlers"
 
+	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/valyala/fasthttp"
@@ -80,18 +81,14 @@ func (h *vkCallbackHandler) Handle(ctx *fasthttp.RequestCtx) {
 }
 
 func (h *vkCallbackHandler) handleChallenge(ctx *fasthttp.RequestCtx) error {
-	interactionId, ok := ctx.UserValue(InteractionIdKey).(string)
-	if !ok || interactionId == "" {
-		// should be impossible but still check
-		return errors.New("invalid interactionId")
+	interactionId, err := getInteractionId(ctx)
+	if err != nil {
+		return err
 	}
 
 	interaction, err := h.repo.GetInteraction(interactionId)
 	if err != nil {
 		return err
-	}
-	if interaction == nil {
-		return errors.New("interaction not found")
 	}
 
 	ctx.Response.SetStatusCode(fasthttp.StatusOK)
@@ -101,22 +98,21 @@ func (h *vkCallbackHandler) handleChallenge(ctx *fasthttp.RequestCtx) error {
 }
 
 func (h *vkCallbackHandler) handleMessage(ctx *fasthttp.RequestCtx, messageType entities.MessageType) error {
-	interactionId, ok := ctx.UserValue(InteractionIdKey).(string)
-	if !ok || interactionId == "" {
-		// should be impossible but still check
-		return errors.New("invalid interactionId")
+	interactionId, err := getInteractionId(ctx)
+	if err != nil {
+		return err
 	}
 
 	var message *vkMessage
 	if messageType == entities.MessageTypeNew {
 		dto := &newMessageDto{}
-		if err := jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
+		if err = jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
 			return err
 		}
 		message = &dto.Object.Message
 	} else {
 		dto := &editOrReplyMessageDto{}
-		if err := jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
+		if err = jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
 			return err
 		}
 		message = &dto.Object
@@ -138,4 +134,17 @@ func (h *vkCallbackHandler) handleMessage(ctx *fasthttp.RequestCtx, messageType 
 	ctx.Response.Header.SetContentType("text/plain")
 	ctx.Response.SetBody([]byte(responseBodyOk))
 	return nil
+}
+
+func getInteractionId(ctx *fasthttp.RequestCtx) (uuid.UUID, error) {
+	strInteractionId, ok := ctx.UserValue(InteractionIdKey).(string)
+	if !ok || strInteractionId == "" {
+		// should be impossible but still check
+		return uuid.Nil, errors.New("invalid interactionId")
+	}
+	interactionId, err := uuid.Parse(strInteractionId)
+	if err != nil {
+		return uuid.Nil, errors.New("invalid interactionId")
+	}
+	return interactionId, nil
 }

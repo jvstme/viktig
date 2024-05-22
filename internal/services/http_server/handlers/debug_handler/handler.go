@@ -3,9 +3,11 @@ package debug_handler
 import (
 	"fmt"
 
+	"viktig/internal/entities"
 	"viktig/internal/repository"
 	"viktig/internal/services/http_server/handlers"
 
+	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/valyala/fasthttp"
 )
@@ -44,7 +46,13 @@ func (h *debugHandler) Handle(ctx *fasthttp.RequestCtx) {
 }
 
 func (h *debugHandler) handleRegisterInteraction(ctx *fasthttp.RequestCtx, data *registerInteractionRequestData) error {
-	interaction, err := h.repo.NewInteraction(data.UserId, data.TgChatId, data.ConfirmationString)
+	interaction := &entities.Interaction{
+		Id:                 uuid.New(),
+		UserId:             data.UserId,
+		ConfirmationString: data.ConfirmationString,
+		TgChatId:           data.TgChatId,
+	}
+	err := h.repo.StoreInteraction(interaction)
 	if err != nil {
 		return err
 	}
@@ -63,7 +71,7 @@ func (h *debugHandler) handleRegisterInteraction(ctx *fasthttp.RequestCtx, data 
 }
 
 func (h *debugHandler) handleNewUser(ctx *fasthttp.RequestCtx, data *newUserRequestData) error {
-	_, err := h.repo.NewUser(data.UserId)
+	err := h.repo.StoreUser(&entities.User{Id: data.UserId})
 	if err != nil {
 		return err
 	}
