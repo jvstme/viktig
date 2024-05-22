@@ -40,7 +40,7 @@ func (s *Service) Run(ctx context.Context) error {
 	botSettings := tele.Settings{Token: s.tgBotToken}
 	bot, err := tele.NewBot(botSettings)
 	if err != nil {
-		return err
+		return fmt.Errorf("telebot error: %w", err)
 	}
 
 	s.l.Info("forwarder is ready", "username", bot.Me.Username)

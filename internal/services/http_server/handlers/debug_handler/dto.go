@@ -32,17 +32,13 @@ func (d *debugRequestDto) UnmarshalJSON(bytes []byte) error {
 		wrapper := &struct {
 			Data *newInteractionRequestData `json:"data"`
 		}{}
-		if err := jsoniter.Unmarshal(bytes, wrapper); err != nil {
-			return err
-		}
+		_ = jsoniter.Unmarshal(bytes, wrapper) // not the first unmarshal
 		d.Data = wrapper.Data
 	case actionNewUser:
 		wrapper := &struct {
 			Data *newUserRequestData `json:"data"`
 		}{}
-		if err := jsoniter.Unmarshal(bytes, wrapper); err != nil {
-			return err
-		}
+		_ = jsoniter.Unmarshal(bytes, wrapper) // not the first unmarshal
 		d.Data = wrapper.Data
 	}
 	err := validator.New().Struct(d)

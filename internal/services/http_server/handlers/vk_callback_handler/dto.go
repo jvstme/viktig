@@ -51,17 +51,13 @@ func (d *vkCallbackDto) UnmarshalJSON(bytes []byte) error {
 				Message *vkMessageData `json:"message"`
 			} `json:"object"`
 		}{}
-		if err := jsoniter.Unmarshal(bytes, &wrapper); err != nil {
-			return err
-		}
+		_ = jsoniter.Unmarshal(bytes, &wrapper) // not the first unmarshal
 		d.Payload = wrapper.Object.Message
 	case messageTypeEdit, messageTypeReply:
 		wrapper := struct {
 			Message *vkMessageData `json:"object"`
 		}{}
-		if err := jsoniter.Unmarshal(bytes, &wrapper); err != nil {
-			return err
-		}
+		_ = jsoniter.Unmarshal(bytes, &wrapper) // not the first unmarshal
 		d.Payload = wrapper.Message
 	default:
 		// not supported type

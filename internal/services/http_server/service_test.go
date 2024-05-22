@@ -219,6 +219,33 @@ func TestVkHandler(t *testing.T) {
 			bodyContains: []string{"json unmarshal error"},
 		},
 		{
+			name: "handleMessage[message_new]: bad message",
+			args: args{
+				reqBody: []byte(`{"type":"message_new","event":"test_event_id","v":"1.0","group_id":12345,"object":{"message":{"from_id":1}}}`),
+				url:     fmt.Sprintf("http://localhost:8080/api/vk/callback/%s", interactionId.String()),
+			},
+			statusCode:   400,
+			bodyContains: []string{"validation error"},
+		},
+		{
+			name: "handleMessage[message_edit]: json unmarshal error",
+			args: args{
+				reqBody: []byte(`{"type":"message_edit","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1}}`),
+				url:     fmt.Sprintf("http://localhost:8080/api/vk/callback/%s", interactionId.String()),
+			},
+			statusCode:   400,
+			bodyContains: []string{"validation error"},
+		},
+		{
+			name: "handleMessage[message_reply]: json unmarshal error",
+			args: args{
+				reqBody: []byte(`{"type":"message_reply","event":"test_event_id","v":"1.0","group_id":12345, "object":{"from_id":1}}`),
+				url:     fmt.Sprintf("http://localhost:8080/api/vk/callback/%s", interactionId.String()),
+			},
+			statusCode:   400,
+			bodyContains: []string{"validation error"},
+		},
+		{
 			name: "handleMessage[message_new]: interaction does not exist",
 			args: args{
 				interactionId: interactionId,
