@@ -79,7 +79,7 @@ func (h *debugHandler) handleNewInteraction(ctx *fasthttp.RequestCtx, data *newI
 	}
 
 	response := &newInteractionResponseDto{
-		CallbackUrl: fmt.Sprintf("%s/callback/%s", h.host, interaction.Id),
+		CallbackUrl: fmt.Sprintf("%s/api/vk/callback/%s", h.host, interaction.Id),
 	}
 	bytes, err := jsoniter.Marshal(response)
 	if err != nil {

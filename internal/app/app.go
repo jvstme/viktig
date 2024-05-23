@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"sync"
 	"viktig/internal/config"
 	"viktig/internal/entities"
@@ -114,10 +115,14 @@ func setupContextAndWg(parentCtx context.Context, errorCh chan error) (ctx conte
 }
 
 func setupHandlers(cfg *config.Config, q *queue.Queue[entities.Message], repo repository.Repository) *handlers.Handlers {
+	var debug handlers.Handler
+	if os.Getenv("RUN_ENV") == "DEBUG" {
+		debug = debug_handler.New(cfg.HttpServerConfig.Host, repo)
+	}
 	return &handlers.Handlers{
 		VkCallbackHandler: vk_callback_handler.New(q, repo, slog.Default()),
 		Metrics:           metrics_handler.New(cfg.MetricsConfig),
-		Debug:             debug_handler.New(cfg.HttpServerConfig.Host, repo),
+		Debug:             debug,
 		//todo: TgBotUIHandler?
 	}
 }

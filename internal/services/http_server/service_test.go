@@ -433,18 +433,24 @@ func TestDebugHandler(t *testing.T) {
 		assert.Contains(t, respBody, "validation error")
 	})
 	t.Run("new user: excess", func(t *testing.T) {
-		_, client := setupDebugHandlerTest(t, "http://localhost")
+		repo, client := setupDebugHandlerTest(t, "http://localhost")
 
 		code, respBody := doRequest(client, []byte(`{"action":"new_user","data":{"id":123,"confirmation_string":"test_confirmation_string","tg_chat_id":321}}`))
 
+		user, err := repo.GetUser(123)
+		assert.NoError(t, err)
+		assert.Equal(t, &entities.User{Id: 123}, user)
 		assert.Equal(t, 200, code)
 		assert.Equal(t, "ok", respBody)
 	})
 	t.Run("new user: ok", func(t *testing.T) {
-		_, client := setupDebugHandlerTest(t, "http://localhost")
+		repo, client := setupDebugHandlerTest(t, "http://localhost")
 
 		code, respBody := doRequest(client, []byte(`{"action":"new_user","data":{"id":123}}`))
 
+		user, err := repo.GetUser(123)
+		assert.NoError(t, err)
+		assert.Equal(t, &entities.User{Id: 123}, user)
 		assert.Equal(t, 200, code)
 		assert.Equal(t, "ok", respBody)
 	})
@@ -549,7 +555,7 @@ func TestDebugHandler(t *testing.T) {
 		assert.Equal(t, 400, code)
 		assert.Equal(t, "request data is nil", respBody)
 	})
-	t.Run("new user: insufficient data", func(t *testing.T) {
+	t.Run("new interaction: insufficient data", func(t *testing.T) {
 		_, client := setupDebugHandlerTest(t, "http://localhost")
 
 		code, respBody := doRequest(client, []byte(`{"action":"new_interaction","data":{"confirmation_string":"test_confirmation_string","tg_chat_id":321}}}`))
@@ -578,7 +584,7 @@ func TestDebugHandler(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "test_confirmation_string", interaction.ConfirmationString)
 		assert.Equal(t, 200, code)
-		assert.Equal(t, fmt.Sprintf(`{"callback_url":"http://localhost/callback/%s"}`, interactionId), respBody)
+		assert.Equal(t, fmt.Sprintf(`{"callback_url":"http://localhost/api/vk/callback/%s"}`, interactionId), respBody)
 	})
 	t.Run("new interaction: ok", func(t *testing.T) {
 		interactionId := uuid.New()
@@ -593,7 +599,7 @@ func TestDebugHandler(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "test_confirmation_string", interaction.ConfirmationString)
 		assert.Equal(t, 200, code)
-		assert.Equal(t, fmt.Sprintf(`{"callback_url":"http://localhost/callback/%s"}`, interactionId), respBody)
+		assert.Equal(t, fmt.Sprintf(`{"callback_url":"http://localhost/api/vk/callback/%s"}`, interactionId), respBody)
 	})
 	// Get Interaction
 	t.Run("get interaction: no request data", func(t *testing.T) {
