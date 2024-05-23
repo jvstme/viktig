@@ -23,7 +23,7 @@ type HttpServer struct {
 
 func New(cfg *Config, handlers *handlers.Handlers, l *slog.Logger) *HttpServer {
 	return &HttpServer{
-		Address:  cfg.Address,
+		Address:  cfg.Host,
 		Port:     cfg.Port,
 		handlers: handlers,
 		l:        l.With("name", "HttpServer"),
@@ -51,9 +51,12 @@ func (s *HttpServer) setupRouter() *router.Router {
 	if s.handlers.Metrics != nil {
 		r.GET("/metrics", s.handlers.Metrics.Handle)
 	}
+	if s.handlers.Debug != nil {
+		r.POST("/debug", s.handlers.Debug.Handle)
+	}
 	api := r.Group("/api")
 	if s.handlers.VkCallbackHandler != nil {
-		api.POST(fmt.Sprintf("/vk/callback/{%s}", vk_callback_handler.HookIdKey), s.handlers.VkCallbackHandler.Handle)
+		api.POST(fmt.Sprintf("/vk/callback/{%s}", vk_callback_handler.InteractionIdKey), s.handlers.VkCallbackHandler.Handle)
 	}
 	return r
 }

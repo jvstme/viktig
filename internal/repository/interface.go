@@ -1,12 +1,17 @@
 package repository
 
-type Interaction struct { // todo: better naming for an item of forwarding
-	id                 string
-	ConfirmationString string
-	TgChatId           int
-}
+import (
+	"github.com/google/uuid"
+	"viktig/internal/entities"
+)
 
 type Repository interface {
-	GetInteraction(id string) (*Interaction, error)
-	ExistsInteraction(id string) bool
+	StoreInteraction(interaction *entities.Interaction) error
+	ExistsInteraction(id uuid.UUID) bool
+	GetInteraction(id uuid.UUID) (*entities.Interaction, error)
+	DeleteInteraction(id uuid.UUID) error
+
+	StoreUser(user *entities.User) error
+	GetUser(id int) (*entities.User, error)
+	DeleteUser(id int) error
 }

@@ -1,6 +1,6 @@
 package http_server
 
 type Config struct {
-	Address string `yaml:"address"`
-	Port    int    `yaml:"port"`
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
 }

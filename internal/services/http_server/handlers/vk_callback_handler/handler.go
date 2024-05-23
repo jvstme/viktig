@@ -11,24 +11,17 @@ import (
 	"viktig/internal/repository"
 	"viktig/internal/services/http_server/handlers"
 
+	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/valyala/fasthttp"
 )
 
 const (
-	messageTypeChallenge = "confirmation"
-
 	responseBodyOk = "ok"
 
-	HookIdKey = "community_hook_id"
+	InteractionIdKey = "interactionId"
 )
-
-var ForwardedMessageTypes = map[string]entities.MessageType{
-	"message_new":   entities.MessageTypeNew,
-	"message_edit":  entities.MessageTypeEdit,
-	"message_reply": entities.MessageTypeReply,
-}
 
 type vkCallbackHandler struct {
 	repo repository.Repository
@@ -56,42 +49,38 @@ func (h *vkCallbackHandler) Handle(ctx *fasthttp.RequestCtx) {
 		}
 	}()
 
-	dto := &typeDto{}
+	dto := &vkCallbackDto{}
 	if err = jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
 		err = fmt.Errorf("json unmarshal error: %w", err)
 		return
 	}
 
 	h.l.Info("received vk event", "type", dto.Type, "id", dto.EventId, "groupId", dto.GroupId, "apiVersion", dto.ApiVersion)
-	metrics.VKEventsReceived.With(prometheus.Labels{"type": dto.Type}).Inc()
+	metrics.VKEventsReceived.With(prometheus.Labels{"type": string(dto.Type)}).Inc()
 
-	if dto.Type == messageTypeChallenge {
+	switch dto.Type {
+	case messageTypeChallenge:
 		err = h.handleChallenge(ctx)
 		return
-	}
-	if messageType, ok := ForwardedMessageTypes[dto.Type]; ok {
-		err = h.handleMessage(ctx, messageType)
+	case messageTypeNew, messageTypeEdit, messageTypeReply:
+		err = h.handleMessage(ctx, dto.Payload)
 		return
+	default:
+		text := fmt.Sprintf("unsupported message type: %s", dto.Type)
+		h.l.Warn(text, "messageType", dto.Type)
+		ctx.Error(text, fasthttp.StatusBadRequest)
 	}
-
-	text := fmt.Sprintf("unsupported message type: %s", dto.Type)
-	h.l.Warn(text, "messageType", dto.Type)
-	ctx.Error(text, fasthttp.StatusBadRequest)
 }
 
 func (h *vkCallbackHandler) handleChallenge(ctx *fasthttp.RequestCtx) error {
-	hookId, ok := ctx.UserValue(HookIdKey).(string)
-	if !ok || hookId == "" {
-		// should be impossible but still check
-		return errors.New("invalid hookId")
-	}
-
-	interaction, err := h.repo.GetInteraction(hookId)
+	interactionId, err := getInteractionId(ctx)
 	if err != nil {
 		return err
 	}
-	if interaction == nil {
-		return errors.New("interaction not found")
+
+	interaction, err := h.repo.GetInteraction(interactionId)
+	if err != nil {
+		return err
 	}
 
 	ctx.Response.SetStatusCode(fasthttp.StatusOK)
@@ -100,42 +89,39 @@ func (h *vkCallbackHandler) handleChallenge(ctx *fasthttp.RequestCtx) error {
 	return nil
 }
 
-func (h *vkCallbackHandler) handleMessage(ctx *fasthttp.RequestCtx, messageType entities.MessageType) error {
-	hookId, ok := ctx.UserValue(HookIdKey).(string)
-	if !ok || hookId == "" {
-		// should be impossible but still check
-		return errors.New("invalid hookId")
+func (h *vkCallbackHandler) handleMessage(ctx *fasthttp.RequestCtx, data *vkMessageData) error {
+	interactionId, err := getInteractionId(ctx)
+	if err != nil {
+		return err
 	}
 
-	var message *vkMessage
-	if messageType == entities.MessageTypeNew {
-		dto := &newMessageDto{}
-		if err := jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
-			return err
-		}
-		message = &dto.Object.Message
-	} else {
-		dto := &editOrReplyMessageDto{}
-		if err := jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
-			return err
-		}
-		message = &dto.Object
-	}
-
-	if !h.repo.ExistsInteraction(hookId) {
+	if !h.repo.ExistsInteraction(interactionId) {
 		return fmt.Errorf("interaction does not exist")
 	}
 
 	//todo: put blocks. add timeout
 	h.q.Put(entities.Message{
-		InteractionId: hookId,
-		Type:          messageType,
-		Text:          message.Text,
-		VkSenderId:    message.SenderId,
+		InteractionId: interactionId,
+		Type:          ForwardedMessageTypes[data.MessageType],
+		Text:          data.Text,
+		VkSenderId:    data.SenderId,
 	})
 
 	ctx.Response.SetStatusCode(fasthttp.StatusOK)
 	ctx.Response.Header.SetContentType("text/plain")
 	ctx.Response.SetBody([]byte(responseBodyOk))
 	return nil
+}
+
+func getInteractionId(ctx *fasthttp.RequestCtx) (uuid.UUID, error) {
+	strInteractionId, ok := ctx.UserValue(InteractionIdKey).(string)
+	if !ok || strInteractionId == "" {
+		// should be impossible but still check
+		return uuid.Nil, errors.New("invalid interactionId")
+	}
+	interactionId, err := uuid.Parse(strInteractionId)
+	if err != nil {
+		return uuid.Nil, errors.New("invalid interactionId")
+	}
+	return interactionId, nil
 }

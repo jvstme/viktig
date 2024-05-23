@@ -1,7 +1,9 @@
 package entities
 
+import "github.com/google/uuid"
+
 type Message struct {
-	InteractionId string // same as hookId from vk
+	InteractionId uuid.UUID
 	Type          MessageType
 	Text          string
 	VkSenderId    int

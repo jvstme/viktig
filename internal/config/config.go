@@ -14,14 +14,7 @@ import (
 type Config struct {
 	ForwarderConfig  *forwarder.Config       `yaml:"forwarder_config" validate:"required"`
 	HttpServerConfig *http_server.Config     `yaml:"http_config" validate:"required"`
-	TempConfig       *TempConfig             `yaml:"temp_config" validate:"required"`
 	MetricsConfig    *metrics_handler.Config `yaml:"metrics_config"`
-}
-
-type TempConfig struct {
-	TgChatId           int    `yaml:"tg_chat_id" validate:"required"`
-	HookId             string `yaml:"community_hook_id" validate:"required"`
-	ConfirmationString string `yaml:"vk_confirmation_string" validate:"required"`
 }
 
 func LoadConfigFromFile(path string) (cfg *Config, err error) {
@@ -37,10 +30,6 @@ func LoadConfigFromFile(path string) (cfg *Config, err error) {
 	if err = yaml.Unmarshal(bytes, &cfg); err != nil {
 		return nil, err
 	}
-
-	//if err = defaults.Set(cfg); err != nil {
-	//	return nil, err
-	//}
 
 	if err = validator.New().Struct(cfg); err != nil {
 		return nil, err

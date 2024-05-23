@@ -11,4 +11,5 @@ type Handler interface {
 type Handlers struct {
 	VkCallbackHandler Handler
 	Metrics           Handler
+	Debug             Handler
 }
