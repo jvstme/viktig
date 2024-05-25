@@ -3,4 +3,24 @@ services:
     image: bitnami/prometheus
     volumes:
       - "./prometheus/prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml:z"
-    network_mode: host
+    networks:
+      - app_network
+    depends_on:
+      - app
+  app:
+    build:
+      context: ../
+      dockerfile: ./deploy/app/Dockerfile
+    restart: always
+    ports:
+      - $HOST_PORT:$APP_PORT
+    volumes:
+      - ./app/config.yaml:/config.yaml
+      - ../dev/db/:/db/
+    env_file: .env
+    networks:
+      - app_network
+    command: ./app "./config.yaml"
+
+networks:
+  app_network:
