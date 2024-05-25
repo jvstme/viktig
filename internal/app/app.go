@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sync"
 	"viktig/internal/config"
 	"viktig/internal/entities"
 	"viktig/internal/queue"
 	"viktig/internal/repository"
-	"viktig/internal/repository/in_memory_repo"
+	"viktig/internal/repository/sqlite_repo"
 	"viktig/internal/services/forwarder"
 	"viktig/internal/services/http_server"
 	"viktig/internal/services/http_server/handlers"
@@ -22,15 +23,26 @@ import (
 )
 
 type App struct {
+	configPath string
 }
 
 func New() App {
-	// todo: cfg path from binary args
-	return App{}
+	path := "./configs/example.yaml"
+	if len(os.Args) == 2 {
+		path = os.Args[1]
+	}
+	stat, err := os.Stat(path)
+	if err != nil {
+		panic(err)
+	}
+	if stat.IsDir() || (filepath.Ext(stat.Name()) != ".yaml" && filepath.Ext(stat.Name()) != ".yml") {
+		panic(fmt.Sprintf("invalid config path: %s", path))
+	}
+	return App{configPath: path}
 }
 
 func (a App) Run() error {
-	cfg, err := config.LoadConfigFromFile("./configs/example.yaml")
+	cfg, err := config.LoadConfigFromFile(a.configPath)
 	if err != nil {
 		return err
 	}
@@ -39,7 +51,7 @@ func (a App) Run() error {
 	appCtx, wg := setupContextAndWg(context.Background(), errorCh)
 
 	q := queue.NewQueue[entities.Message]()
-	repo := in_memory_repo.New()
+	repo := sqlite_repo.New(cfg.RepoConfig)
 
 	forwarderService := forwarder.New(cfg.ForwarderConfig, q, repo, slog.Default())
 	wg.Add(1)
@@ -55,15 +67,12 @@ func (a App) Run() error {
 		errorCh <- httpServer.Run(appCtx)
 	}()
 
-	// all services go here
-	// all services must shut down on <-appCtx.Done() and return an error
-
 	// Предлагаю 3 сервиса:
 	// 		[x] Сервис 1: веб-сервер на который хукается вк. Он кладет сообщение во внешнюю очередь
 	// 		[x] Сервис 2: шлет сообщения из очереди в нужные каналы. Можно добавить ретраи
 	// 		[x] Очередь
+	//      [x] К ним репо для БД. В бд храним инфу о пользователе и взаимодействиях иже с ней
 	// todo [ ] Сервис 3: UI бота/настройки
-	// todo [ ] К ним репо для БД. В бд храним инфу о пользователе и взаимодействиях иже с ней
 
 	closer.Hold()
 	return nil
