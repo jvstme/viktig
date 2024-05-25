@@ -12,6 +12,7 @@ import (
 	"viktig/internal/queue"
 	"viktig/internal/repository"
 	"viktig/internal/repository/sqlite_repo"
+	"viktig/internal/services/forwarder"
 	"viktig/internal/services/http_server"
 	"viktig/internal/services/http_server/handlers"
 	"viktig/internal/services/http_server/handlers/debug_handler"
@@ -50,14 +51,14 @@ func (a App) Run() error {
 	appCtx, wg := setupContextAndWg(context.Background(), errorCh)
 
 	q := queue.NewQueue[entities.Message]()
-	repo := sqlite_repo.New()
+	repo := sqlite_repo.New(cfg.RepoConfig)
 
-	//forwarderService := forwarder.New(cfg.ForwarderConfig, q, repo, slog.Default())
-	//wg.Add(1)
-	//go func() {
-	//	defer wg.Done()
-	//	errorCh <- forwarderService.Run(appCtx)
-	//}()
+	forwarderService := forwarder.New(cfg.ForwarderConfig, q, repo, slog.Default())
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		errorCh <- forwarderService.Run(appCtx)
+	}()
 
 	httpServer := http_server.New(cfg.HttpServerConfig, setupHandlers(cfg, q, repo), slog.Default())
 	wg.Add(1)

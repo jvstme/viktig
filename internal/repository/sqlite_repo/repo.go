@@ -1,45 +1,43 @@
 package sqlite_repo
 
 import (
-	"fmt"
+	"github.com/glebarez/sqlite"
 	"github.com/google/uuid"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"log/slog"
+	"gorm.io/gorm/logger"
 	"viktig/internal/entities"
 	"viktig/internal/repository"
-	"viktig/internal/repository/in_memory_repo"
 )
 
-type postgresRepo struct {
+type sqliteRepo struct {
 	db *gorm.DB
 }
 
-func New() repository.Repository {
-	db, err := gorm.Open(sqlite.Open("./dev/dev.db"), &gorm.Config{})
+func New(cfg *repository.Config) repository.Repository {
+	db, err := gorm.Open(sqlite.Open(cfg.Dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		slog.Warn(fmt.Sprintf("failed to connect to database use in-memory repo: %v", err))
-		return in_memory_repo.New()
+		panic(err)
 	}
-	_ = db.AutoMigrate(&entities.User{}, &entities.Interaction{})
-	_ = db.AutoMigrate(&entities.Interaction{})
-	return &postgresRepo{
+	if err = db.AutoMigrate(&entities.User{}, &entities.Interaction{}); err != nil {
+		panic(err)
+	}
+	return &sqliteRepo{
 		db: db,
 	}
 }
 
-func (r *postgresRepo) StoreInteraction(interaction *entities.Interaction) error {
+func (r *sqliteRepo) StoreInteraction(interaction *entities.Interaction) error {
 	result := r.db.Create(interaction)
 	return result.Error
 }
 
-func (r *postgresRepo) ExistsInteraction(id uuid.UUID) bool {
+func (r *sqliteRepo) ExistsInteraction(id uuid.UUID) bool {
 	interaction := &entities.Interaction{}
 	result := r.db.First(interaction, id)
 	return result.Error == nil
 }
 
-func (r *postgresRepo) GetInteraction(id uuid.UUID) (*entities.Interaction, error) {
+func (r *sqliteRepo) GetInteraction(id uuid.UUID) (*entities.Interaction, error) {
 	interaction := &entities.Interaction{}
 	result := r.db.First(interaction, id)
 	if result.Error != nil {
@@ -48,18 +46,18 @@ func (r *postgresRepo) GetInteraction(id uuid.UUID) (*entities.Interaction, erro
 	return interaction, nil
 }
 
-func (r *postgresRepo) DeleteInteraction(id uuid.UUID) error {
+func (r *sqliteRepo) DeleteInteraction(id uuid.UUID) error {
 	interaction := &entities.Interaction{}
 	result := r.db.Delete(interaction, id)
 	return result.Error
 }
 
-func (r *postgresRepo) StoreUser(user *entities.User) error {
+func (r *sqliteRepo) StoreUser(user *entities.User) error {
 	result := r.db.Create(user)
 	return result.Error
 }
 
-func (r *postgresRepo) GetUser(id int) (*entities.User, error) {
+func (r *sqliteRepo) GetUser(id int) (*entities.User, error) {
 	user := &entities.User{}
 	result := r.db.First(user, id)
 	if result.Error != nil {
@@ -68,7 +66,7 @@ func (r *postgresRepo) GetUser(id int) (*entities.User, error) {
 	return user, nil
 }
 
-func (r *postgresRepo) DeleteUser(id int) error {
+func (r *sqliteRepo) DeleteUser(id int) error {
 	user := &entities.User{}
 	result := r.db.Delete(user, id)
 	return result.Error

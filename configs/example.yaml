@@ -8,3 +8,6 @@ http_config:
 
 metrics_config:
   metrics_auth_token: my-secret-metrics-token
+
+repo_config:
+  dsn: "./dev/dev.db"

@@ -2,7 +2,7 @@ package config
 
 import (
 	"os"
-
+	"viktig/internal/repository"
 	"viktig/internal/services/forwarder"
 	"viktig/internal/services/http_server"
 	"viktig/internal/services/http_server/handlers/metrics_handler"
@@ -15,6 +15,7 @@ type Config struct {
 	ForwarderConfig  *forwarder.Config       `yaml:"forwarder_config" validate:"required"`
 	HttpServerConfig *http_server.Config     `yaml:"http_config" validate:"required"`
 	MetricsConfig    *metrics_handler.Config `yaml:"metrics_config"`
+	RepoConfig       *repository.Config      `yaml:"repo_config"`
 }
 
 func LoadConfigFromFile(path string) (cfg *Config, err error) {
