@@ -60,7 +60,7 @@ func (a App) Run() error {
 		errorCh <- forwarderService.Run(appCtx)
 	}()
 
-	httpServer := http_server.New(cfg.HttpServerConfig, setupHandlers(cfg, q, repo), slog.Default())
+	httpServer := http_server.New(cfg.Address, os.Getenv("APP_PORT"), setupHandlers(cfg, q, repo), slog.Default())
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -125,8 +125,8 @@ func setupContextAndWg(parentCtx context.Context, errorCh chan error) (ctx conte
 
 func setupHandlers(cfg *config.Config, q *queue.Queue[entities.Message], repo repository.Repository) *handlers.Handlers {
 	var debug handlers.Handler
-	if os.Getenv("RUN_ENV") == "DEBUG" {
-		debug = debug_handler.New(cfg.HttpServerConfig.Host, repo)
+	if os.Getenv("APP_ENV") == "DEBUG" {
+		debug = debug_handler.New(cfg.Host, repo)
 	}
 	return &handlers.Handlers{
 		VkCallbackHandler: vk_callback_handler.New(q, repo, slog.Default()),

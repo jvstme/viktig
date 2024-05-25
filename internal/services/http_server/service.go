@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"strconv"
 
 	"viktig/internal/services/http_server/handlers"
 	"viktig/internal/services/http_server/handlers/vk_callback_handler"
@@ -12,6 +13,8 @@ import (
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
 )
+
+const defaultPort = 8080
 
 type HttpServer struct {
 	Address string
@@ -21,10 +24,14 @@ type HttpServer struct {
 	l        *slog.Logger
 }
 
-func New(cfg *Config, handlers *handlers.Handlers, l *slog.Logger) *HttpServer {
+func New(address, port string, handlers *handlers.Handlers, l *slog.Logger) *HttpServer {
+	intPort, err := strconv.Atoi(port)
+	if err != nil {
+		intPort = defaultPort
+	}
 	return &HttpServer{
-		Address:  cfg.Host,
-		Port:     cfg.Port,
+		Address:  address,
+		Port:     intPort,
 		handlers: handlers,
 		l:        l.With("name", "HttpServer"),
 	}

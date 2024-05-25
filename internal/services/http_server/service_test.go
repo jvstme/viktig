@@ -32,7 +32,7 @@ func (s handlerStub) Handle(_ *fasthttp.RequestCtx) {}
 
 func TestServiceStartStop(t *testing.T) {
 	h := &handlers.Handlers{Metrics: &handlerStub{}, VkCallbackHandler: &handlerStub{}}
-	s := New(&Config{Host: "localhost", Port: 1337}, h, slog.Default())
+	s := New("localhost", "1337", h, slog.Default())
 
 	var ok bool
 	p := gomonkey.ApplyFunc(net.Listen, func(network string, address string) (net.Listener, error) {
@@ -75,7 +75,7 @@ func TestVkHandler(t *testing.T) {
 		})
 		h := &handlers.Handlers{Metrics: &handlerStub{}, VkCallbackHandler: vk_callback_handler.New(q, repo, slog.Default()), Debug: &handlerStub{}}
 
-		s := New(&Config{Host: "localhost", Port: 1337}, h, slog.Default())
+		s := New("localhost", "1337", h, slog.Default())
 
 		ctx, cancel := context.WithCancel(context.Background())
 		t.Cleanup(cancel)
@@ -378,7 +378,7 @@ func TestDebugHandler(t *testing.T) {
 			Debug:             debug_handler.New(host, repo),
 		}
 
-		s := New(&Config{Host: host, Port: 1337}, h, slog.Default())
+		s := New("localhost", "1337", h, slog.Default())
 		ctx, cancel := context.WithCancel(context.Background())
 		t.Cleanup(cancel)
 		go func() { _ = s.Run(ctx) }()
