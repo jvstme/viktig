@@ -1,6 +1,5 @@
-forwarder_config:
-  # Create a bot and get the token with https://t.me/BotFather.
-  bot_token: "1234567890:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# Create a bot and get the token with https://t.me/BotFather.
+bot_token: "1234567890:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 metrics_config:
   metrics_auth_token: my-secret-metrics-token
