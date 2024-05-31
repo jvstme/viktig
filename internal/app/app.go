@@ -17,10 +17,12 @@ import (
 	"viktig/internal/services/http_server/handlers"
 	"viktig/internal/services/http_server/handlers/debug_handler"
 	"viktig/internal/services/http_server/handlers/metrics_handler"
+	"viktig/internal/services/http_server/handlers/telegram_bot_handler"
 	"viktig/internal/services/http_server/handlers/vk_callback_handler"
 
 	"github.com/cosiner/flag"
 	"github.com/xlab/closer"
+	tele "gopkg.in/telebot.v3"
 )
 
 type Params struct {
@@ -50,14 +52,20 @@ func (a App) Run() error {
 	q := queue.NewQueue[entities.Message]()
 	repo := sqlite_repo.New(cfg.RepoConfig)
 
-	forwarderService := forwarder.New(cfg.ForwarderConfig, q, repo, slog.Default())
+	botSettings := tele.Settings{Token: cfg.TelegramBotToken}
+	bot, err := tele.NewBot(botSettings)
+	if err != nil {
+		return err
+	}
+
+	forwarderService := forwarder.New(bot, q, repo, slog.Default())
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		errorCh <- forwarderService.Run(appCtx)
 	}()
 
-	httpServer := http_server.New(a.params.Address, a.setupHandlers(cfg, q, repo), slog.Default())
+	httpServer := http_server.New(a.params.Address, a.setupHandlers(cfg, q, bot, repo), slog.Default())
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -113,7 +121,12 @@ func (a App) setupContextAndWg(parentCtx context.Context, errorCh chan error) (c
 	return
 }
 
-func (a App) setupHandlers(cfg *config.Config, q *queue.Queue[entities.Message], repo repository.Repository) *handlers.Handlers {
+func (a App) setupHandlers(
+	cfg *config.Config,
+	q *queue.Queue[entities.Message],
+	bot *tele.Bot,
+	repo repository.Repository,
+) *handlers.Handlers {
 	var debug handlers.Handler
 	if a.params.Debug {
 		debug = debug_handler.New(a.params.Host, repo)
@@ -122,7 +135,7 @@ func (a App) setupHandlers(cfg *config.Config, q *queue.Queue[entities.Message],
 		VkCallbackHandler: vk_callback_handler.New(q, repo, slog.Default()),
 		Metrics:           metrics_handler.New(cfg.MetricsConfig),
 		Debug:             debug,
-		//todo: TgBotUIHandler?
+		TelegramBot:       telegram_bot_handler.New(bot, repo, slog.Default()),
 	}
 }
 

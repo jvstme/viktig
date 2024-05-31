@@ -87,19 +87,6 @@ func TestService(t *testing.T) {
 
 		assert.NoError(t, <-errCh)
 	})
-	t.Run("stop", func(t *testing.T) {
-		p := gomonkey.ApplyFunc(tele.NewBot, func(_ tele.Settings) (*tele.Bot, error) {
-			return nil, fmt.Errorf("error")
-		})
-		defer p.Reset()
-		_, _, s := setup(t, interactionId, "confirmationString", "token", 123)
-		errCh := make(chan error)
-		ctx, cancel := context.WithCancel(context.Background())
-		go func() { errCh <- s.Run(ctx) }()
-		cancel()
-
-		assert.EqualError(t, <-errCh, "telebot error: error")
-	})
 	t.Run("error get interaction", func(t *testing.T) {
 		p := gomonkey.ApplyFunc(tele.NewBot, func(_ tele.Settings) (*tele.Bot, error) {
 			return &tele.Bot{Me: &tele.User{Username: "mock"}}, nil
@@ -208,7 +195,7 @@ func setup(t *testing.T, interactionId uuid.UUID, confirmationString, botToken s
 		TgChatId:           tgChatId,
 	})
 
-	s := New(&Config{BotToken: botToken}, q, repo, log)
+	s := New(nil, q, repo, log)
 
 	t.Cleanup(func() {
 		if !t.Failed() {
