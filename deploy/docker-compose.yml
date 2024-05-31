@@ -13,14 +13,14 @@ services:
       dockerfile: ./deploy/app/Dockerfile
     restart: always
     ports:
-      - $HOST_PORT:$APP_PORT
+      - $HOST_PORT:8080
     volumes:
       - ./app/config.yaml:/config.yaml
       - ../dev/db/:/db/
     env_file: .env
     networks:
       - app_network
-    command: ./app "./config.yaml"
+    command: ./app -c ./config.yaml --host $HOST -a app:8080 $APP_FLAGS
 
 networks:
   app_network:

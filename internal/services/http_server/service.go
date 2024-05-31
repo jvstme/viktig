@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"strconv"
-
 	"viktig/internal/services/http_server/handlers"
 	"viktig/internal/services/http_server/handlers/vk_callback_handler"
 
@@ -14,32 +12,23 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-const defaultPort = 8080
-
 type HttpServer struct {
 	Address string
-	Port    int
 
 	handlers *handlers.Handlers
 	l        *slog.Logger
 }
 
-func New(address, port string, handlers *handlers.Handlers, l *slog.Logger) *HttpServer {
-	intPort, err := strconv.Atoi(port)
-	if err != nil {
-		intPort = defaultPort
-	}
+func New(address string, handlers *handlers.Handlers, l *slog.Logger) *HttpServer {
 	return &HttpServer{
 		Address:  address,
-		Port:     intPort,
 		handlers: handlers,
 		l:        l.With("name", "HttpServer"),
 	}
 }
 
 func (s *HttpServer) Run(ctx context.Context) error {
-	socketAddress := fmt.Sprintf("%s:%d", s.Address, s.Port)
-	l, err := net.Listen("tcp", socketAddress)
+	l, err := net.Listen("tcp", s.Address)
 	if err != nil {
 		return err
 	}
@@ -49,7 +38,7 @@ func (s *HttpServer) Run(ctx context.Context) error {
 		_ = l.Close()
 	}()
 
-	s.l.Info("starting http server", "address", socketAddress)
+	s.l.Info("starting http server", "address", s.Address)
 	return fasthttp.Serve(l, s.setupRouter().Handler)
 }
 

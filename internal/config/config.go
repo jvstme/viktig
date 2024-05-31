@@ -11,8 +11,6 @@ import (
 )
 
 type Config struct {
-	Host            string                  `yaml:"host"` // for returning links
-	Address         string                  `yaml:"address"`
 	ForwarderConfig *forwarder.Config       `yaml:"forwarder_config" validate:"required"`
 	MetricsConfig   *metrics_handler.Config `yaml:"metrics_config"`
 	RepoConfig      *repository.Config      `yaml:"repo_config"`
