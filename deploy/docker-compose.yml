@@ -20,7 +20,7 @@ services:
     env_file: .env
     networks:
       - app_network
-    command: ./app -c ./config.yaml --host $HOST -a app:8080 $APP_FLAGS
+    command: ./app -c ./config.yaml --host $HOST_DOMAIN -a app:8080 $APP_FLAGS
 
 networks:
   app_network:
