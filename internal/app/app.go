@@ -17,9 +17,11 @@ import (
 	"viktig/internal/services/http_server/handlers"
 	"viktig/internal/services/http_server/handlers/debug_handler"
 	"viktig/internal/services/http_server/handlers/metrics_handler"
+	"viktig/internal/services/http_server/handlers/telegram_bot_handler"
 	"viktig/internal/services/http_server/handlers/vk_callback_handler"
 
 	"github.com/xlab/closer"
+	tele "gopkg.in/telebot.v3"
 )
 
 type App struct {
@@ -53,14 +55,20 @@ func (a App) Run() error {
 	q := queue.NewQueue[entities.Message]()
 	repo := sqlite_repo.New(cfg.RepoConfig)
 
-	forwarderService := forwarder.New(cfg.ForwarderConfig, q, repo, slog.Default())
+	botSettings := tele.Settings{Token: cfg.TelegramBotToken}
+	bot, err := tele.NewBot(botSettings)
+	if err != nil {
+		return err
+	}
+
+	forwarderService := forwarder.New(bot, q, repo, slog.Default())
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		errorCh <- forwarderService.Run(appCtx)
 	}()
 
-	httpServer := http_server.New(cfg.HttpServerConfig, setupHandlers(cfg, q, repo), slog.Default())
+	httpServer := http_server.New(cfg.HttpServerConfig, setupHandlers(cfg, q, bot, repo), slog.Default())
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -123,7 +131,12 @@ func setupContextAndWg(parentCtx context.Context, errorCh chan error) (ctx conte
 	return
 }
 
-func setupHandlers(cfg *config.Config, q *queue.Queue[entities.Message], repo repository.Repository) *handlers.Handlers {
+func setupHandlers(
+	cfg *config.Config,
+	q *queue.Queue[entities.Message],
+	bot *tele.Bot,
+	repo repository.Repository,
+) *handlers.Handlers {
 	var debug handlers.Handler
 	if os.Getenv("RUN_ENV") == "DEBUG" {
 		debug = debug_handler.New(cfg.HttpServerConfig.Host, repo)
@@ -132,6 +145,6 @@ func setupHandlers(cfg *config.Config, q *queue.Queue[entities.Message], repo re
 		VkCallbackHandler: vk_callback_handler.New(q, repo, slog.Default()),
 		Metrics:           metrics_handler.New(cfg.MetricsConfig),
 		Debug:             debug,
-		//todo: TgBotUIHandler?
+		TelegramBot:       telegram_bot_handler.New(bot, repo, slog.Default()),
 	}
 }

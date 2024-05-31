@@ -12,4 +12,5 @@ type Handlers struct {
 	VkCallbackHandler Handler
 	Metrics           Handler
 	Debug             Handler
+	TelegramBot       Handler
 }

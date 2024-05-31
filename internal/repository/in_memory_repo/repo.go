@@ -2,20 +2,23 @@ package in_memory_repo
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"viktig/internal/entities"
 	"viktig/internal/repository"
+
+	"github.com/google/uuid"
 )
 
 type inMemoryRepo struct {
-	users        map[int]*entities.User
-	interactions map[string]*entities.Interaction
+	users                  map[int]*entities.User
+	interactions           map[string]*entities.Interaction
+	incompleteInteractions map[int]*entities.IncompleteInteraction
 }
 
 func New() repository.Repository {
 	return &inMemoryRepo{
-		users:        make(map[int]*entities.User),
-		interactions: make(map[string]*entities.Interaction),
+		users:                  make(map[int]*entities.User),
+		interactions:           make(map[string]*entities.Interaction),
+		incompleteInteractions: make(map[int]*entities.IncompleteInteraction),
 	}
 }
 
@@ -44,6 +47,47 @@ func (r *inMemoryRepo) StoreInteraction(interaction *entities.Interaction) error
 
 func (r *inMemoryRepo) DeleteInteraction(id uuid.UUID) error {
 	delete(r.interactions, id.String())
+	return nil
+}
+
+func (r *inMemoryRepo) ListInteractions(userId int) ([]*entities.Interaction, error) {
+	if _, ok := r.users[userId]; !ok {
+		return nil, fmt.Errorf("user not found")
+	}
+	var interactions []*entities.Interaction
+	for _, interaction := range r.interactions {
+		if interaction.UserId == userId {
+			interactions = append(interactions, interaction)
+		}
+	}
+	return interactions, nil
+}
+
+func (r *inMemoryRepo) StoreIncompleteInteraction(interaction *entities.IncompleteInteraction) error {
+	if interaction == nil {
+		return nil
+	}
+	if _, ok := r.users[interaction.UserId]; !ok {
+		return fmt.Errorf("user not found")
+	}
+	r.incompleteInteractions[interaction.UserId] = interaction
+	return nil
+}
+
+func (r *inMemoryRepo) UpdateIncompleteInteraction(interaction *entities.IncompleteInteraction) error {
+	return r.StoreIncompleteInteraction(interaction)
+}
+
+func (r *inMemoryRepo) GetIncompleteInteraction(userId int) (*entities.IncompleteInteraction, error) {
+	interaction, ok := r.incompleteInteractions[userId]
+	if !ok {
+		return nil, fmt.Errorf("interaction not found")
+	}
+	return interaction, nil
+}
+
+func (r *inMemoryRepo) DeleteIncompleteInteraction(userId int) error {
+	delete(r.incompleteInteractions, userId)
 	return nil
 }
 
