@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/agiledragon/gomonkey/v2 v2.11.0
+	github.com/cosiner/flag v0.5.2
 	github.com/fasthttp/router v1.5.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-playground/validator/v10 v10.19.0
