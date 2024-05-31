@@ -20,37 +20,34 @@ import (
 	"viktig/internal/services/http_server/handlers/telegram_bot_handler"
 	"viktig/internal/services/http_server/handlers/vk_callback_handler"
 
+	"github.com/cosiner/flag"
 	"github.com/xlab/closer"
 	tele "gopkg.in/telebot.v3"
 )
 
+type Params struct {
+	Debug      bool   `names:"--debug" usage:"enable /debug route" default:"false"`
+	ConfigPath string `names:"--config, -c" usage:"config file path" default:"./config.yaml"`
+	Address    string `names:"--address, -a" usage:"address of machine or container" default:"127.0.0.1:8080"`
+	Host       string `names:"--host" usage:"domain name for requests" default:"example.com"`
+}
+
 type App struct {
-	configPath string
+	params *Params
 }
 
 func New() App {
-	path := "./configs/example.yaml"
-	if len(os.Args) == 2 {
-		path = os.Args[1]
-	}
-	stat, err := os.Stat(path)
-	if err != nil {
-		panic(err)
-	}
-	if stat.IsDir() || (filepath.Ext(stat.Name()) != ".yaml" && filepath.Ext(stat.Name()) != ".yml") {
-		panic(fmt.Sprintf("invalid config path: %s", path))
-	}
-	return App{configPath: path}
+	return App{params: getValidatedParams()}
 }
 
 func (a App) Run() error {
-	cfg, err := config.LoadConfigFromFile(a.configPath)
+	cfg, err := config.LoadConfigFromFile(a.params.ConfigPath)
 	if err != nil {
 		return err
 	}
 
 	errorCh := make(chan error)
-	appCtx, wg := setupContextAndWg(context.Background(), errorCh)
+	appCtx, wg := a.setupContextAndWg(context.Background(), errorCh)
 
 	q := queue.NewQueue[entities.Message]()
 	repo := sqlite_repo.New(cfg.RepoConfig)
@@ -68,19 +65,12 @@ func (a App) Run() error {
 		errorCh <- forwarderService.Run(appCtx)
 	}()
 
-	httpServer := http_server.New(cfg.HttpServerConfig, setupHandlers(cfg, q, bot, repo), slog.Default())
+	httpServer := http_server.New(a.params.Address, a.setupHandlers(cfg, q, bot, repo), slog.Default())
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		errorCh <- httpServer.Run(appCtx)
 	}()
-
-	// Предлагаю 3 сервиса:
-	// 		[x] Сервис 1: веб-сервер на который хукается вк. Он кладет сообщение во внешнюю очередь
-	// 		[x] Сервис 2: шлет сообщения из очереди в нужные каналы. Можно добавить ретраи
-	// 		[x] Очередь
-	//      [x] К ним репо для БД. В бд храним инфу о пользователе и взаимодействиях иже с ней
-	// todo [ ] Сервис 3: UI бота/настройки
 
 	closer.Hold()
 	return nil
@@ -90,7 +80,7 @@ func (a App) Run() error {
 //
 //	All non-nil errors received from errorCh after an app shutdown request will be logged as "App shutdown errors".
 //	If an error is received from errorCh before an app shutdown request, closer.Close will be called.
-func setupContextAndWg(parentCtx context.Context, errorCh chan error) (ctx context.Context, wg *sync.WaitGroup) {
+func (a App) setupContextAndWg(parentCtx context.Context, errorCh chan error) (ctx context.Context, wg *sync.WaitGroup) {
 	wg = &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(parentCtx)
 
@@ -131,15 +121,15 @@ func setupContextAndWg(parentCtx context.Context, errorCh chan error) (ctx conte
 	return
 }
 
-func setupHandlers(
+func (a App) setupHandlers(
 	cfg *config.Config,
 	q *queue.Queue[entities.Message],
 	bot *tele.Bot,
 	repo repository.Repository,
 ) *handlers.Handlers {
 	var debug handlers.Handler
-	if os.Getenv("RUN_ENV") == "DEBUG" {
-		debug = debug_handler.New(cfg.HttpServerConfig.Host, repo)
+	if a.params.Debug {
+		debug = debug_handler.New(a.params.Host, repo)
 	}
 	return &handlers.Handlers{
 		VkCallbackHandler: vk_callback_handler.New(q, repo, slog.Default()),
@@ -147,4 +137,22 @@ func setupHandlers(
 		Debug:             debug,
 		TelegramBot:       telegram_bot_handler.New(bot, repo, slog.Default()),
 	}
+}
+
+func getValidatedParams() *Params {
+	params := &Params{}
+	err := flag.Commandline.ParseStruct(params)
+	if err != nil {
+		panic(err)
+	}
+
+	stat, err := os.Stat(params.ConfigPath)
+	if err != nil {
+		panic(err)
+	}
+	if stat.IsDir() || (filepath.Ext(stat.Name()) != ".yaml" && filepath.Ext(stat.Name()) != ".yml") {
+		panic(fmt.Sprintf("invalid config path: %s", params.ConfigPath))
+	}
+
+	return params
 }

@@ -4,6 +4,7 @@ import (
 	"os"
 	"viktig/internal/repository"
 	"viktig/internal/services/http_server"
+	"viktig/internal/services/forwarder"
 	"viktig/internal/services/http_server/handlers/metrics_handler"
 
 	"github.com/go-playground/validator/v10"
@@ -13,8 +14,8 @@ import (
 type Config struct {
 	TelegramBotToken string                  `yaml:"telegram_bot_token" validate:"required"`
 	HttpServerConfig *http_server.Config     `yaml:"http_config" validate:"required"`
-	MetricsConfig    *metrics_handler.Config `yaml:"metrics_config"`
-	RepoConfig       *repository.Config      `yaml:"repo_config"`
+	MetricsConfig   *metrics_handler.Config `yaml:"metrics_config"`
+	RepoConfig      *repository.Config      `yaml:"repo_config"`
 }
 
 func LoadConfigFromFile(path string) (cfg *Config, err error) {

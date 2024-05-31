@@ -2,6 +2,7 @@ package debug_handler
 
 import (
 	"fmt"
+	"log/slog"
 	"viktig/internal/entities"
 	"viktig/internal/repository"
 	"viktig/internal/services/http_server/handlers"
@@ -14,16 +15,18 @@ import (
 type debugHandler struct {
 	repo repository.Repository
 	host string
+	l    *slog.Logger
 }
 
 func New(host string, repo repository.Repository) handlers.Handler {
-	return &debugHandler{host: host, repo: repo}
+	return &debugHandler{host: host, repo: repo, l: slog.Default().With("name", "DebugHandler")}
 }
 
 func (h *debugHandler) Handle(ctx *fasthttp.RequestCtx) {
 	var err error
 	defer func() {
 		if err != nil {
+			h.l.Error(fmt.Sprintf("Error handling request: %v", err))
 			ctx.Error(err.Error(), fasthttp.StatusBadRequest)
 		}
 	}()
@@ -33,6 +36,7 @@ func (h *debugHandler) Handle(ctx *fasthttp.RequestCtx) {
 		err = fmt.Errorf("json unmarshal error: %w", err)
 		return
 	}
+	h.l.Info(fmt.Sprintf("New request with action %s. (%+v)", request.Action, request.Data), "action", request.Action)
 	switch request.Action {
 	case actionNewUser:
 		if err = h.handleNewUser(ctx, request.Data.(*newUserRequestData)); err != nil {
