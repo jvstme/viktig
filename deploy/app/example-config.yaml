@@ -1,5 +1,4 @@
-# Create a bot and get the token with https://t.me/BotFather.
-bot_token: "1234567890:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+telegram_bot_token: "1234567890:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"# Create a bot and get the token with https://t.me/BotFather.
 
 metrics_config:
   metrics_auth_token: my-secret-metrics-token
