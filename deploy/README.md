@@ -1,5 +1,7 @@
 Deployment configurations for additional services. Currently suitable for dev deployments only.
 
+**NB**: Configure your own `.env` and `app/config.yaml` files. Examples are provided in `.env.example` and `app/example-config.yaml` respectively.
+
 ## Running
 
 ```shell
