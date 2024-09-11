@@ -37,6 +37,7 @@ func (s *VkUsersGetter) Run(ctx context.Context) error {
 
             // Retrieve VK users based on the sender ID of the incoming message
             if err := s.client.CallMethod("users.get", vk.RequestParams{"user_id": message.VkSenderId}, &users); err != nil {
+            	s.l.Error("error getting user info: %v", err)
             	message.VkSender = nil
                 s.qo.Put(message)
             }else {
