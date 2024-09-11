@@ -46,3 +46,11 @@ func (s *VkUsersGetter) Run(ctx context.Context) error {
 		}
 	}
 }
+
+func CheckVKClient(client *vk.Client) error {
+    var users []entities.VkUser
+    if err := client.CallMethod("users.get", vk.RequestParams{}, &users); err != nil {
+        return err
+    }
+    return nil
+}

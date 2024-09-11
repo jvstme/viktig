@@ -40,18 +40,22 @@ func (a App) Run() error {
 		vk.WithToken(""),
 	)
 	if err != nil {
-		fmt.Sprintf("vk client not initialized: %v", err)
-		forwarderService := forwarder.New(cfg.ForwarderConfig, q1)
-	} else {
+		return err
+	}
+
+	if err := vk_users_getter.CheckVKClient(client); err == nil {
 		vkUsersGetterService := vk_users_getter.New(client, q1, q2, slog.Default())
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			errorCh <- vkUsersGetterService.Run(appCtx)
 		}()
-
-		forwarderService := forwarder.New(cfg.ForwarderConfig, q2)
+	} else {
+		slog.Error(fmt.Sprintf("vk client initializing failed: %+v", err))
+		q1 = q2
 	}
+
+	forwarderService := forwarder.New(cfg.ForwarderConfig, q2)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
