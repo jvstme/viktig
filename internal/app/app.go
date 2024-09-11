@@ -16,6 +16,10 @@ import (
 	"github.com/xlab/closer"
 )
 
+const (
+	DefaultLang = "ru"
+)
+
 type App struct {
 }
 
@@ -37,7 +41,8 @@ func (a App) Run() error {
 	q2 := queue.NewQueue[entities.Message]() // users_getter --> forwarder
 
 	client, err := vk.NewClientWithOptions(
-		vk.WithToken(""),
+		vk.WithToken(cfg.VkApiToken),
+		vk_users_getter.WithLang(DefaultLang),
 	)
 	if err != nil {
 		return err

@@ -54,3 +54,10 @@ func CheckVKClient(client *vk.Client) error {
     }
     return nil
 }
+
+func WithLang(lang string) vk.Option {
+	return func(client *vk.Client) error {
+		client.Lang = lang
+		return nil
+	}
+}

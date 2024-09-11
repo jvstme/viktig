@@ -1,16 +1,18 @@
 package config
 
 import (
-	"github.com/go-playground/validator/v10"
-	"gopkg.in/yaml.v3"
 	"os"
 	"viktig/internal/services/forwarder"
 	"viktig/internal/services/http_server"
+
+	"github.com/go-playground/validator/v10"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
 	ForwarderConfig  *forwarder.Config   `yaml:"forwarder_config" validate:"required"`
 	HttpServerConfig *http_server.Config `yaml:"http_config" validate:"required"`
+	VkApiToken       string              `yaml:"vk_api_token"`
 }
 
 func LoadConfigFromFile(path string) (cfg *Config, err error) {
