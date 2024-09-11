@@ -4,6 +4,7 @@ type Message struct {
 	Type       MessageType
 	Text       string
 	VkSenderId int
+	VkSender   *VkUser
 }
 
 type MessageType int
