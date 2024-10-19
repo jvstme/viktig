@@ -11,18 +11,18 @@ import (
 )
 
 type VkUsersGetter struct {
-    client    *vk.Client
-	qi        *queue.Queue[entities.Message]
-	qo        *queue.Queue[entities.Message]
-	l         *slog.Logger
+	client *vk.Client
+	qi     *queue.Queue[entities.Message]
+	qo     *queue.Queue[entities.Message]
+	l      *slog.Logger
 }
 
 func New(client *vk.Client, inQueue *queue.Queue[entities.Message], outQueue *queue.Queue[entities.Message], l *slog.Logger) *VkUsersGetter {
 	return &VkUsersGetter{
-	    client:    client,
-		qi:    inQueue,
-		qo:    outQueue,
-		l:    l.With("name", "VkUsersGetterService"),
+		client: client,
+		qi:     inQueue,
+		qo:     outQueue,
+		l:      l.With("name", "VkUsersGetterService"),
 	}
 }
 
@@ -33,27 +33,27 @@ func (s *VkUsersGetter) Run(ctx context.Context) error {
 			s.l.Info("stopping vkUsersGetter service")
 			return nil
 		case message := <-s.qi.AsChan():
-            var users []*entities.VkUser
+			var users []*entities.VkUser
 
-            // Retrieve VK users based on the sender ID of the incoming message
-            if err := s.client.CallMethod("users.get", vk.RequestParams{"user_id": message.VkSenderId}, &users); err != nil {
-            	s.l.Error("error getting user info: %v", err)
-            	message.VkSender = nil
-                s.qo.Put(message)
-            }else {
-                message.VkSender = users[0]
-                s.qo.Put(message)
-            }
+			// Retrieve VK users based on the sender ID of the incoming message
+			if err := s.client.CallMethod("users.get", vk.RequestParams{"user_id": message.VkSenderId}, &users); err != nil {
+				s.l.Error("error getting user info: %v", err)
+				message.VkSender = nil
+				s.qo.Put(message)
+			} else {
+				message.VkSender = users[0]
+				s.qo.Put(message)
+			}
 		}
 	}
 }
 
 func CheckVKClient(client *vk.Client) error {
-    var users []entities.VkUser
-    if err := client.CallMethod("users.get", vk.RequestParams{}, &users); err != nil {
-        return err
-    }
-    return nil
+	var users []entities.VkUser
+	if err := client.CallMethod("users.get", vk.RequestParams{}, &users); err != nil {
+		return err
+	}
+	return nil
 }
 
 func WithLang(lang string) vk.Option {
