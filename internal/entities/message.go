@@ -14,3 +14,7 @@ const (
 	MessageTypeEdit
 	MessageTypeReply
 )
+
+func (m *Message) IsFromUser() bool {
+	return m.VkSenderId > 0
+}

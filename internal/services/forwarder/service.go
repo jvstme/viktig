@@ -72,7 +72,7 @@ func (f *Forwarder) Run(ctx context.Context) error {
 func render(message entities.Message) string {
 	entitySlug := "id"
 	entityId := message.VkSenderId
-	if message.VkSenderId < 0 {
+	if !message.IsFromUser() {
 		entitySlug = "club"
 		entityId = -message.VkSenderId
 	}
