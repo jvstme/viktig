@@ -33,8 +33,24 @@ func (s *HttpServer) vkHandler(ctx *fasthttp.RequestCtx) {
 		}
 	}()
 
+	hookId, ok := ctx.UserValue(hookIdKey).(string)
+	if !ok || hookId == "" {
+		err = errors.New("invalid hookId")
+		return
+	}
+	community, ok := s.communities[hookId]
+	if !ok {
+		err = fmt.Errorf("hookId not found: %s", hookId)
+		return
+	}
+
 	dto := &typeDto{}
 	if err = jsoniter.Unmarshal(ctx.Request.Body(), dto); err != nil {
+		return
+	}
+
+	if dto.Secret != community.SecretKey {
+		err = fmt.Errorf("secret key does not match for hookId %s", hookId)
 		return
 	}
 
@@ -48,9 +64,9 @@ func (s *HttpServer) vkHandler(ctx *fasthttp.RequestCtx) {
 	metrics.VKEventsReceived.With((prometheus.Labels{"type": dto.Type})).Inc()
 
 	if dto.Type == messageTypeChallenge {
-		err = s.handleChallenge(ctx)
+		err = s.handleChallenge(ctx, community)
 	} else if messageType, ok := forwardedMessageTypes[dto.Type]; ok {
-		err = s.handleMessage(ctx, messageType)
+		err = s.handleMessage(ctx, hookId, messageType)
 	} else {
 		text := fmt.Sprintf("unsupported message type: %s", dto.Type)
 		slog.Warn(text, "messageType", dto.Type)
@@ -58,17 +74,7 @@ func (s *HttpServer) vkHandler(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (s *HttpServer) handleChallenge(ctx *fasthttp.RequestCtx) error {
-	hookId, ok := ctx.UserValue(hookIdKey).(string)
-	if !ok || hookId == "" {
-		return errors.New("invalid hookId")
-	}
-
-	community, ok := s.communities[hookId]
-	if !ok {
-		return errors.New("hookId not found")
-	}
-
+func (s *HttpServer) handleChallenge(ctx *fasthttp.RequestCtx, community *Community) error {
 	ctx.Response.SetStatusCode(fasthttp.StatusOK)
 	ctx.Response.Header.SetContentType("text/plain")
 	ctx.Response.SetBody([]byte(community.ConfirmationString))
@@ -76,18 +82,11 @@ func (s *HttpServer) handleChallenge(ctx *fasthttp.RequestCtx) error {
 	return nil
 }
 
-func (s *HttpServer) handleMessage(ctx *fasthttp.RequestCtx, messageType entities.MessageType) error {
-
-	hookId, ok := ctx.UserValue(hookIdKey).(string)
-	if !ok || hookId == "" {
-		return errors.New("invalid hookId")
-	}
-
-	_, ok = s.communities[hookId]
-	if !ok {
-		return errors.New("hookId not found")
-	}
-
+func (s *HttpServer) handleMessage(
+	ctx *fasthttp.RequestCtx,
+	hookId string,
+	messageType entities.MessageType,
+) error {
 	var message *vkMessage
 
 	if messageType == entities.MessageTypeNew {

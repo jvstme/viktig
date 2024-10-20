@@ -5,6 +5,7 @@ type typeDto struct {
 	EventId    string `json:"event_id"`
 	ApiVersion string `json:"v"`
 	GroupId    int    `json:"group_id"`
+	Secret     string `json:"secret"`
 }
 
 type newMessageDto struct {

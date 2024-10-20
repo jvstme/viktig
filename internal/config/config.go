@@ -16,6 +16,7 @@ type Config struct {
 
 type CommunityConfig struct {
 	HookId             string `yaml:"hook_id" validate:"required"`
+	SecretKey          string `yaml:"secret_key" validate:"required"`
 	ConfirmationString string `yaml:"confirmation_string" validate:"required"`
 	TgChatId           int    `yaml:"tg_chat_id" validate:"required"`
 }

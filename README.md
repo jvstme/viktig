@@ -15,6 +15,7 @@ Service for forwarding messages from VK communities to Telegram chats.
     # List of VK communities
     communities:
     - hook_id: my-community  # Used in VK callback URL: /api/vk/callback/<hook_id>
+      secret_key: secret  # From VK community Callback API settings
       confirmation_string: abcde123  # From VK community Callback API settings
       tg_chat_id: 123456789  # Find your ID with https://t.me/userinfobot
     ```

@@ -83,7 +83,10 @@ func (a App) Run() {
 func (a App) makeHttpServer(q *queue.Queue[entities.Message]) *http_server.HttpServer {
 	communities := make(map[string]*http_server.Community)
 	for _, community := range a.cfg.Communities {
-		communities[community.HookId] = &http_server.Community{ConfirmationString: community.ConfirmationString}
+		communities[community.HookId] = &http_server.Community{
+			SecretKey:          community.SecretKey,
+			ConfirmationString: community.ConfirmationString,
+		}
 	}
 	return http_server.New(
 		a.params.Host,

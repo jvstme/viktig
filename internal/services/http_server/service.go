@@ -17,6 +17,7 @@ import (
 const hookIdKey = "community_hook_id"
 
 type Community struct {
+	SecretKey          string
 	ConfirmationString string
 }
 
