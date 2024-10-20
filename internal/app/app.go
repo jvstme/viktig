@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"sync"
 	"viktig/internal/config"
 	"viktig/internal/entities"
@@ -12,80 +14,93 @@ import (
 	"viktig/internal/services/http_server"
 	"viktig/internal/services/vk_users_getter"
 
-	"github.com/go-vk-api/vk"
+	"github.com/cosiner/flag"
 	"github.com/xlab/closer"
 )
 
-const (
-	DefaultLang = "ru"
-)
+type Params struct {
+	ConfigPath string `names:"--config" usage:"config file path" default:"./config.yml"`
+	Host       string `names:"--host" usage:"host to bind to" default:"127.0.0.1"`
+	Port       int    `names:"--port" usage:"port to bind to" default:"1337"`
+}
 
 type App struct {
+	params *Params
+	cfg    *config.Config
 }
 
-func New() App {
-	// todo: cfg path from binary args
-	return App{}
-}
-
-func (a App) Run() error {
-	cfg, err := config.LoadConfigFromFile("./configs/example.yaml")
+func New() (*App, error) {
+	params := &Params{}
+	err := flag.Commandline.ParseStruct(params)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	stat, err := os.Stat(params.ConfigPath)
+	if err != nil {
+		return nil, err
+	}
+	if stat.IsDir() || (filepath.Ext(stat.Name()) != ".yaml" && filepath.Ext(stat.Name()) != ".yml") {
+		return nil, fmt.Errorf("invalid config path: %s", params.ConfigPath)
+	}
+	cfg, err := config.LoadConfigFromFile(params.ConfigPath)
+	if err != nil {
+		return nil, err
+	}
+	return &App{params, cfg}, nil
+}
 
+func (a App) Run() {
 	errorCh := make(chan error)
 	appCtx, wg := setupContextAndWg(context.Background(), errorCh)
 
 	q1 := queue.NewQueue[entities.Message]() // callback_handler --> users_getter
 	q2 := queue.NewQueue[entities.Message]() // users_getter --> forwarder
 
-	client, err := vk.NewClientWithOptions(
-		vk.WithToken(cfg.VkApiToken),
-		vk_users_getter.WithLang(DefaultLang),
-	)
-	if err != nil {
-		return err
-	}
+	vkUsersGetterService := vk_users_getter.New(a.cfg.VkApiToken, q1, q2, slog.Default())
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		errorCh <- vkUsersGetterService.Run(appCtx)
+	}()
 
-	if err := vk_users_getter.CheckVKClient(client); err == nil {
-		vkUsersGetterService := vk_users_getter.New(client, q1, q2, slog.Default())
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			errorCh <- vkUsersGetterService.Run(appCtx)
-		}()
-	} else {
-		slog.Error(fmt.Sprintf("vk client initializing failed: %+v", err))
-		q1 = q2
-	}
-
-	forwarderService := forwarder.New(cfg.ForwarderConfig, q2)
+	forwarderService := a.makeForwarder(q2)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		errorCh <- forwarderService.Run(appCtx)
 	}()
 
-	httpServer := http_server.New(cfg.HttpServerConfig, q1)
+	httpServer := a.makeHttpServer(q1)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		errorCh <- httpServer.Run(appCtx)
 	}()
 
-	// all services go here
-	// all services must shut down on <-appCtx.Done() and return an error
-
-	// Предлагаю 3 сервиса:
-	// 		[x] Сервис 1: веб-сервер на который хукается вк. Он кладет сообщение во внешнюю очередь
-	// 		[x] Сервис 2: шлет сообщения из очереди в нужные каналы. Можно добавить ретраи
-	// 		[x] Очередь
-	// todo [ ] Сервис 3: UI бота/настройки
-	// todo [ ] К ним репо для БД. В бд храним инфу о пользователе и иже с ней
-
 	closer.Hold()
-	return nil
+}
+
+func (a App) makeHttpServer(q *queue.Queue[entities.Message]) *http_server.HttpServer {
+	communities := make(map[string]*http_server.Community)
+	for _, community := range a.cfg.Communities {
+		communities[community.HookId] = &http_server.Community{ConfirmationString: community.ConfirmationString}
+	}
+	return http_server.New(
+		a.params.Host,
+		a.params.Port,
+		a.cfg.MetricsAuthToken,
+		communities,
+		q,
+		slog.Default(),
+	)
+}
+
+func (a App) makeForwarder(q *queue.Queue[entities.Message]) *forwarder.Forwarder {
+	communities := make(map[string]*forwarder.Community)
+	for _, community := range a.cfg.Communities {
+		communities[community.HookId] = &forwarder.Community{TgChatId: community.TgChatId}
+	}
+	return forwarder.New(a.cfg.TgBotToken, communities, q, slog.Default())
 }
 
 // setupContextAndWg returns a context cancelled on app shutdown request and a wait group awaited on shutdown.

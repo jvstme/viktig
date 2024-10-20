@@ -47,4 +47,13 @@ func TestBearerTokenAuth(t *testing.T) {
 		assert.Equal(t, fasthttp.StatusOK, resp.StatusCode)
 		assert.Equal(t, string(body), "ok")
 	})
+	t.Run("no token", func(t *testing.T) {
+		client := makeTestClient(bearerTokenAuth("", alwaysOkHandler))
+		req, _ := http.NewRequest("GET", "http://localhost/", nil)
+		req.Header.Set("Authorization", "Bearer ")
+		resp, _ := client.Do(req)
+		body, _ := io.ReadAll(resp.Body)
+		assert.Equal(t, fasthttp.StatusUnauthorized, resp.StatusCode)
+		assert.Equal(t, string(body), "unauthorized")
+	})
 }

@@ -2,17 +2,22 @@ package config
 
 import (
 	"os"
-	"viktig/internal/services/forwarder"
-	"viktig/internal/services/http_server"
 
 	"github.com/go-playground/validator/v10"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	ForwarderConfig  *forwarder.Config   `yaml:"forwarder_config" validate:"required"`
-	HttpServerConfig *http_server.Config `yaml:"http_config" validate:"required"`
-	VkApiToken       string              `yaml:"vk_api_token"`
+	TgBotToken       string             `yaml:"tg_bot_token" validate:"required"`
+	VkApiToken       string             `yaml:"vk_api_token" validate:"required"`
+	MetricsAuthToken string             `yaml:"metrics_auth_token"`
+	Communities      []*CommunityConfig `yaml:"communities" validate:"required,dive"`
+}
+
+type CommunityConfig struct {
+	HookId             string `yaml:"hook_id" validate:"required"`
+	ConfirmationString string `yaml:"confirmation_string" validate:"required"`
+	TgChatId           int    `yaml:"tg_chat_id" validate:"required"`
 }
 
 func LoadConfigFromFile(path string) (cfg *Config, err error) {
@@ -28,10 +33,6 @@ func LoadConfigFromFile(path string) (cfg *Config, err error) {
 	if err = yaml.Unmarshal(bytes, &cfg); err != nil {
 		return nil, err
 	}
-
-	//if err = defaults.Set(cfg); err != nil {
-	//	return nil, err
-	//}
 
 	if err = validator.New().Struct(cfg); err != nil {
 		return nil, err

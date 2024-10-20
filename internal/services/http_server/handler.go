@@ -64,11 +64,14 @@ func (s *HttpServer) handleChallenge(ctx *fasthttp.RequestCtx) error {
 		return errors.New("invalid hookId")
 	}
 
-	// todo: get confirmation string from hookId from DB
+	community, ok := s.communities[hookId]
+	if !ok {
+		return errors.New("hookId not found")
+	}
 
 	ctx.Response.SetStatusCode(fasthttp.StatusOK)
 	ctx.Response.Header.SetContentType("text/plain")
-	ctx.Response.SetBody([]byte(s.ConfirmationString))
+	ctx.Response.SetBody([]byte(community.ConfirmationString))
 
 	return nil
 }
@@ -80,7 +83,10 @@ func (s *HttpServer) handleMessage(ctx *fasthttp.RequestCtx, messageType entitie
 		return errors.New("invalid hookId")
 	}
 
-	// todo: enqueue message with hook
+	_, ok = s.communities[hookId]
+	if !ok {
+		return errors.New("hookId not found")
+	}
 
 	var message *vkMessage
 
@@ -99,6 +105,7 @@ func (s *HttpServer) handleMessage(ctx *fasthttp.RequestCtx, messageType entitie
 	}
 
 	s.q.Put(entities.Message{
+		HookId:     hookId,
 		Type:       messageType,
 		Text:       message.Text,
 		VkSenderId: message.SenderId,

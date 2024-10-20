@@ -20,17 +20,28 @@ var messageTypeIcons = map[entities.MessageType]string{
 	entities.MessageTypeReply: "↩️",
 }
 
-type Forwarder struct {
-	tgToken  string
-	tgChatId int
-	q        *queue.Queue[entities.Message]
+type Community struct {
+	TgChatId int
 }
 
-func New(cfg *Config, queue *queue.Queue[entities.Message]) *Forwarder {
+type Forwarder struct {
+	tgToken     string
+	communities map[string]*Community
+	q           *queue.Queue[entities.Message]
+	l           *slog.Logger
+}
+
+func New(
+	tgToken string,
+	communities map[string]*Community,
+	q *queue.Queue[entities.Message],
+	l *slog.Logger,
+) *Forwarder {
 	return &Forwarder{
-		tgToken:  cfg.TgConfig.Token,
-		tgChatId: cfg.TgConfig.ChatId,
-		q:        queue,
+		tgToken:     tgToken,
+		communities: communities,
+		q:           q,
+		l:           l.With("service", "Forwarder"),
 	}
 }
 
@@ -38,24 +49,29 @@ func (f *Forwarder) Run(ctx context.Context) error {
 	botSettings := tele.Settings{Token: f.tgToken}
 	bot, err := tele.NewBot(botSettings)
 	if err != nil {
-		return err
+		return fmt.Errorf("telebot error: %w", err)
 	}
 
-	slog.Info("forwarder is ready", "username", bot.Me.Username)
+	f.l.Info("forwarder is ready", "username", bot.Me.Username)
 
 	for {
 		select {
 		case message := <-f.q.AsChan():
+			community, ok := f.communities[message.HookId]
+			if !ok {
+				f.l.Error("hookId not found", "hookId", message.HookId)
+				continue
+			}
 			sentMessage, err := bot.Send(
-				tele.ChatID(f.tgChatId),
+				tele.ChatID(community.TgChatId),
 				render(message),
 				tele.ModeHTML,
 				tele.NoPreview,
 			)
 			if err != nil {
-				slog.Error(err.Error())
+				f.l.Error("error sending telegram message", "err", err.Error())
 			} else {
-				slog.Info(
+				f.l.Info(
 					"sent telegram message",
 					"id", sentMessage.ID,
 					"chatId", sentMessage.Chat.ID,
@@ -63,7 +79,7 @@ func (f *Forwarder) Run(ctx context.Context) error {
 				metrics.MessagesForwarded.Inc()
 			}
 		case <-ctx.Done():
-			slog.Info("stopping forwarder service")
+			f.l.Info("stopping forwarder service")
 			return nil
 		}
 	}
