@@ -54,5 +54,8 @@ func (s *HttpServer) setupRouter() *router.Router {
 	if s.handlers.VkCallbackHandler != nil {
 		api.POST(fmt.Sprintf("/vk/callback/{%s}", vk_callback_handler.InteractionIdKey), s.handlers.VkCallbackHandler.Handle)
 	}
+	if s.handlers.TelegramBot != nil {
+		api.POST("/telegram/webhook", s.handlers.TelegramBot.Handle)
+	}
 	return r
 }

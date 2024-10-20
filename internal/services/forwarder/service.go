@@ -21,30 +21,22 @@ var messageTypeIcons = map[entities.MessageType]string{
 }
 
 type Service struct {
-	tgBotToken string
-	q          *queue.Queue[entities.Message]
-	repo       repository.Repository
-	l          *slog.Logger
+	bot  *tele.Bot
+	q    *queue.Queue[entities.Message]
+	repo repository.Repository
+	l    *slog.Logger
 }
 
-func New(cfg *Config, queue *queue.Queue[entities.Message], repo repository.Repository, l *slog.Logger) *Service {
+func New(bot *tele.Bot, queue *queue.Queue[entities.Message], repo repository.Repository, l *slog.Logger) *Service {
 	return &Service{
-		tgBotToken: cfg.BotToken,
-		q:          queue,
-		repo:       repo,
-		l:          l.With("name", "ForwarderService"),
+		bot:  bot,
+		q:    queue,
+		repo: repo,
+		l:    l.With("name", "ForwarderService"),
 	}
 }
 
 func (s *Service) Run(ctx context.Context) error {
-	botSettings := tele.Settings{Token: s.tgBotToken}
-	bot, err := tele.NewBot(botSettings)
-	if err != nil {
-		return fmt.Errorf("telebot error: %w", err)
-	}
-
-	s.l.Info("forwarder is ready", "username", bot.Me.Username)
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -63,7 +55,7 @@ func (s *Service) Run(ctx context.Context) error {
 			}
 
 			l = l.With("toTgChatId", interaction.TgChatId)
-			sentMessage, err := bot.Send(
+			sentMessage, err := s.bot.Send(
 				tele.ChatID(interaction.TgChatId),
 				render(message),
 				tele.ModeHTML,
