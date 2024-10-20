@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"html"
 	"log/slog"
+	"strconv"
+
 	"viktig/internal/entities"
 	"viktig/internal/metrics"
 	"viktig/internal/queue"
@@ -70,16 +72,20 @@ func (f *Forwarder) Run(ctx context.Context) error {
 func render(message entities.Message) string {
 	entitySlug := "id"
 	entityId := message.VkSenderId
-	if message.VkSenderId < 0 {
+	if !message.IsFromUser() {
 		entitySlug = "club"
 		entityId = -message.VkSenderId
 	}
+	userName := strconv.Itoa(entityId)
+	if message.VkSender != nil {
+		userName = message.VkSender.FirstName + " " + message.VkSender.LastName
+	}
 
 	return fmt.Sprintf(
-		"👤 <a href=\"https://vk.com/%s%d\">%d</a>\n%s %s",
+		"👤 <a href=\"https://vk.com/%s%d\">%s</a>\n%s %s",
 		entitySlug,
 		entityId,
-		entityId,
+		userName,
 		messageTypeIcons[message.Type],
 		html.EscapeString(message.Text),
 	)

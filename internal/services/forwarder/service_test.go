@@ -48,6 +48,17 @@ func TestRender(t *testing.T) {
 		expected := "👤 <a href=\"https://vk.com/id4321\">4321</a>\n↩️ Reply"
 		assert.Equal(t, expected, actual)
 	})
+	t.Run("with sender name", func(t *testing.T) {
+		message := entities.Message{
+			Type:       entities.MessageTypeNew,
+			Text:       "Hello",
+			VkSenderId: 1234,
+			VkSender:   &entities.VkUser{FirstName: "John", LastName: "Doe"},
+		}
+		actual := render(message)
+		expected := "👤 <a href=\"https://vk.com/id1234\">John Doe</a>\n💬 Hello"
+		assert.Equal(t, expected, actual)
+	})
 	t.Run("escape HTML", func(t *testing.T) {
 		message := entities.Message{
 			Type:       entities.MessageTypeNew,

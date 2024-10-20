@@ -10,8 +10,14 @@ import (
 	"viktig/internal/queue"
 	"viktig/internal/services/forwarder"
 	"viktig/internal/services/http_server"
+	"viktig/internal/services/vk_users_getter"
 
+	"github.com/go-vk-api/vk"
 	"github.com/xlab/closer"
+)
+
+const (
+	DefaultLang = "ru"
 )
 
 type App struct {
@@ -31,16 +37,37 @@ func (a App) Run() error {
 	errorCh := make(chan error)
 	appCtx, wg := setupContextAndWg(context.Background(), errorCh)
 
-	q := queue.NewQueue[entities.Message]()
+	q1 := queue.NewQueue[entities.Message]() // callback_handler --> users_getter
+	q2 := queue.NewQueue[entities.Message]() // users_getter --> forwarder
 
-	forwarderService := forwarder.New(cfg.ForwarderConfig, q)
+	client, err := vk.NewClientWithOptions(
+		vk.WithToken(cfg.VkApiToken),
+		vk_users_getter.WithLang(DefaultLang),
+	)
+	if err != nil {
+		return err
+	}
+
+	if err := vk_users_getter.CheckVKClient(client); err == nil {
+		vkUsersGetterService := vk_users_getter.New(client, q1, q2, slog.Default())
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errorCh <- vkUsersGetterService.Run(appCtx)
+		}()
+	} else {
+		slog.Error(fmt.Sprintf("vk client initializing failed: %+v", err))
+		q1 = q2
+	}
+
+	forwarderService := forwarder.New(cfg.ForwarderConfig, q2)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		errorCh <- forwarderService.Run(appCtx)
 	}()
 
-	httpServer := http_server.New(cfg.HttpServerConfig, q)
+	httpServer := http_server.New(cfg.HttpServerConfig, q1)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
